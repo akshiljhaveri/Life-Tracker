@@ -4011,22 +4011,42 @@ function rFitToday(){
   try{
     if(fitActiveSession){rFitSessionCards();return;}
     const today=fitTodayName();
-    const rec=fitGetRecommendation();
+    const rec=fitGetRecommendation(td());
     let html='<div style="font-family:\'Fraunces\',serif;font-size:22px;font-weight:400;margin-bottom:.25rem;">Today</div>';
     html+=`<div style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">${esc(today)}</div>`;
     // Recommendation badge
-    if(rec&&rec.type!=='rest'){
+    if(rec&&rec.type==='rest'){
+      html+=`<div style="background:var(--surface2);border-radius:var(--r);padding:12px 16px;margin-bottom:1rem;font-size:13px;color:var(--text-muted);">😴 ${esc(rec.label)} — ${esc(rec.reason)}</div>`;
+    } else if(rec&&rec.type==='recovery'){
+      const doneCount=fitSessions.filter(s=>s.type==='recovery').length;
+      const recSess=FIT_ACTIVE_RECOVERY_PLAN[Math.min(doneCount,FIT_ACTIVE_RECOVERY_PLAN.length-1)];
       html+=`<div style="margin-bottom:1rem;">
-        <span class="fit-rec-badge">💡 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.sub)}</span></span>
-        ${rec.group?`<button class="fit-pill-btn" onclick="fitStartGroupWorkout('${rec.group}')" style="width:100%;margin-top:8px;">▶ Start ${esc(rec.label)}</button>`:''}
-        ${rec.type==='cardio'?`<button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="width:100%;margin-top:8px;">🏃 Log Run</button><button class="fit-ghost-btn" onclick="fitScheduleRun(fitTodayName())" style="width:100%;margin-top:6px;font-size:12px;">📅 Schedule next run session</button>`:''}
+        <span class="fit-rec-badge">🚶 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.reason)}</span></span>
+        <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:12px 16px;margin-top:8px;">
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">${esc(recSess.label)}</div>
+          <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">${esc(recSess.note)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${recSess.intervals.map(iv=>{const col=iv.t==='jog'?'#c0392b':iv.t==='mobility'?'#8E44AD':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${esc(iv.label||iv.t)} ${durStr}${iv.pace?` @ ${iv.pace}km/h`:''}</span>`;}).join('')}</div>
+          <div style="display:flex;gap:8px;">
+            <button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="flex:1;font-size:12px;">🚶 Log Recovery</button>
+            <button class="fit-ghost-btn" onclick="fitScheduleRecovery('${td()}')" style="flex:1;font-size:12px;">📅 Schedule</button>
+          </div>
+        </div>
       </div>`;
-    } else if(rec&&rec.type==='rest'){
-      html+=`<div style="background:var(--surface2);border-radius:var(--r);padding:12px 16px;margin-bottom:1rem;font-size:13px;color:var(--text-muted);">😴 ${esc(rec.label)} — ${esc(rec.sub)}</div>`;
+    } else if(rec&&rec.type==='cardio'){
+      html+=`<div style="margin-bottom:1rem;">
+        <span class="fit-rec-badge">🏃 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.reason)}</span></span>
+        <button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="width:100%;margin-top:8px;">🏃 Log Run</button>
+        <button class="fit-ghost-btn" onclick="fitScheduleRun(fitTodayName())" style="width:100%;margin-top:6px;font-size:12px;">📅 Schedule next run session</button>
+      </div>`;
+    } else if(rec&&rec.type==='lifting'&&rec.group){
+      html+=`<div style="margin-bottom:1rem;">
+        <span class="fit-rec-badge">💡 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.reason)}</span></span>
+        <button class="fit-pill-btn" onclick="fitStartGroupWorkout('${rec.group.id}')" style="width:100%;margin-top:8px;">▶ Start ${esc(rec.label)}</button>
+      </div>`;
     }
     // Exercise preview for recommended group
-    if(rec&&rec.group){
-      const g=fitGroups.find(x=>x.id===rec.group);
+    if(rec&&rec.type==='lifting'&&rec.group){
+      const g=rec.group;
       if(g&&g.exerciseIds&&g.exerciseIds.length){
         html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:12px 16px;margin-bottom:1rem;">
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">${esc(g.name)} — ${g.exerciseIds.length} exercises</div>
@@ -4411,71 +4431,61 @@ function fitSkipFeedback(){
 // ─────────────────────────── SCHEDULE TAB ────────────────────────────────────
 function rFitSchedule(){
   const el=document.getElementById('fit-schedule-panel');
-  // Build plan overview (shown above the existing week schedule)
-  const now=new Date();
-  const planRows=FIT_DAYS.map((day,i)=>{
-    const dowIdx=[1,2,3,4,5,6,0][i]; // Mon=1 ... Sun=0
-    const plan=FIT_WEEKLY_PLAN[dowIdx];
-    const isToday=fitTodayName()===day;
-    // Days since muscles last trained
-    let daysSince='';
-    if(plan&&plan.muscles.length){
-      let best=0;
-      plan.muscles.forEach(m=>{
-        for(let j=fitSessions.length-1;j>=0;j--){
-          const s=fitSessions[j];if(!s.date)continue;
-          const hit=s.type==='cardio'?['Cardio','Legs'].includes(m):(s.items||[]).some(item=>{const ex=fitExercises.find(x=>x.id===item.exId);return ex&&(ex.muscles||[]).includes(m);});
-          if(hit){const d=Math.round((now-new Date(s.date))/86400000);if(d>best)best=d;break;}
-        }
-      });
-      if(best>0)daysSince=`<span style="font-size:11px;color:${best>=3?'#c0392b':'var(--text-faint)'};">${best}d ago</span>`;
-    }
+  // Dynamic 7-day recommendation preview
+  const days7=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(Date.now()+i*86400000).toISOString().slice(0,10);
+    days7.push({date:d,rec:fitGetRecommendation(d)});
+  }
+  const todayStr=td();
+  const planRows=days7.map(({date,rec})=>{
+    const isToday=date===todayStr;
+    const dayLabel=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    const typeColor=rec.type==='rest'?'var(--text-faint)':rec.type==='recovery'?'#8E44AD':rec.type==='cardio'?'#c0392b':'var(--accent)';
+    const typeIcon=rec.type==='rest'?'😴':rec.type==='recovery'?'🚶':rec.type==='cardio'?'🏃':'🏋️';
     let exercisePreview='';
-    if(plan&&plan.group){
-      const g=fitGroups.find(x=>x.id===plan.group);
-      if(g&&g.exerciseIds&&g.exerciseIds.length){
-        const exList=g.exerciseIds.slice(0,8).map(exId=>{
-          const ex=fitExercises.find(x=>x.id===exId);if(!ex)return'';
-          const isBW=(ex.unit||'lbs')==='bw';
-          const w=ex.targetWeight||ex.sw||0;
-          const r=ex.targetReps||ex.sr||8;
-          const s=ex.defaultSets||ex.sets||3;
-          const target=isBW?`BW × ${r} reps × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
-          return`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">${esc(ex.name)}</span><span style="color:var(--text-faint);font-size:11px;">${target}</span></div>`;
-        }).join('');
-        exercisePreview=`<details style="margin-top:8px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;">${g.exerciseIds.length} exercises ▸</summary><div style="margin-top:6px;">${exList}</div></details>`;
+    if(rec.type==='lifting'&&rec.group){
+      const g=rec.group;
+      const exList=g.exerciseIds.map(exId=>{
+        const ex=fitExercises.find(x=>x.id===exId);if(!ex)return'';
+        const isBW=(ex.unit||'lbs')==='bw';
+        const w=ex.targetWeight||ex.sw||0;
+        const r=ex.targetReps||ex.sr||8;
+        const s=ex.defaultSets||ex.sets||3;
+        const target=isBW?`BW × ${r} reps × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
+        return`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">${esc(ex.name)}</span><span style="color:var(--text-faint);font-size:11px;">${target}</span></div>`;
+      }).join('');
+      exercisePreview=`<details style="margin-top:6px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;">${g.exerciseIds.length} exercises ▸</summary><div style="margin-top:6px;">${exList}</div></details>`;
+    } else if(rec.type==='cardio'){
+      const sIdx=Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1);
+      const rs=FIT_RUN_PLAN[sIdx];
+      if(rs){
+        const intervals=rs.intervals.map(iv=>{const col=iv.t==='run'?'#c0392b':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${iv.t==='run'?'Run':'Walk'} ${durStr} @ ${iv.pace}km/h</span>`;}).join(' ');
+        exercisePreview=`<details style="margin-top:6px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;list-style:none;">🏃 Session ${sIdx+1}: ${rs.wLabel} ▸</summary><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${intervals}</div><button class="fit-ghost-btn" onclick="fitScheduleRun('${new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'})}')" style="font-size:11px;margin-top:6px;width:100%;">📅 Schedule this run</button></details>`;
+      }
+    } else if(rec.type==='recovery'){
+      const doneCount=fitSessions.filter(s=>s.type==='recovery').length;
+      const rs=FIT_ACTIVE_RECOVERY_PLAN[Math.min(doneCount,FIT_ACTIVE_RECOVERY_PLAN.length-1)];
+      if(rs){
+        const intervals=rs.intervals.map(iv=>{const col=iv.t==='jog'?'#c0392b':iv.t==='mobility'?'#8E44AD':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${esc(iv.label||iv.t)} ${durStr}${iv.pace?` @ ${iv.pace}km/h`:''}</span>`;}).join(' ');
+        exercisePreview=`<details style="margin-top:6px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;list-style:none;">🚶 ${esc(rs.label)} · ${rs.totalMin}min ▸</summary><div style="font-size:11px;color:var(--text-faint);margin:4px 0;">${esc(rs.note)}</div><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">${intervals}</div><button class="fit-ghost-btn" onclick="fitScheduleRecovery('${date}')" style="font-size:11px;margin-top:6px;width:100%;">📅 Schedule recovery</button></details>`;
       }
     }
-    return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+    return`<div style="padding:8px 0;border-bottom:1px solid var(--border)${isToday?';background:rgba(var(--accent-rgb),.04);margin:0 -4px;padding:8px 4px;border-radius:6px;':''}">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:36px;font-size:12px;font-weight:${isToday?600:400};color:${isToday?'var(--accent)':'var(--text-muted)'};">${day.slice(0,3)}</div>
+        <div style="font-size:12px;font-weight:${isToday?600:400};color:${isToday?'var(--accent)':'var(--text-muted)'};min-width:60px;">${dayLabel}</div>
         <div style="flex:1;">
-          <div style="font-size:13px;font-weight:500;">${plan?esc(plan.label):'Rest'}</div>
-          ${plan&&plan.muscles.length?`<div style="font-size:11px;color:var(--text-faint);">${plan.muscles.join(' · ')}</div>`:''}
+          <div style="font-size:13px;font-weight:500;color:${typeColor};">${typeIcon} ${esc(rec.label)}</div>
+          <div style="font-size:11px;color:var(--text-faint);">${esc(rec.reason)}</div>
         </div>
-        ${daysSince}
-        ${isToday?`<span style="font-size:10px;background:var(--accent);color:#F5F3EE;padding:2px 7px;border-radius:10px;">TODAY</span>`:''}
-        ${plan&&plan.group?`<button class="fit-ghost-btn" onclick="fitScheduleDay(${dowIdx})" style="font-size:11px;padding:3px 8px;">📅 Schedule</button>`:''}
-        ${plan&&plan.type==='cardio'?`<button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:11px;padding:3px 8px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Log</button><button class="fit-ghost-btn" onclick="fitScheduleRun('${day}')" style="font-size:11px;padding:3px 8px;">📅 Run</button>`:''}
+        ${isToday?`<span style="font-size:10px;background:var(--accent);color:#F5F3EE;padding:2px 7px;border-radius:10px;white-space:nowrap;">TODAY</span>`:''}
       </div>
       ${exercisePreview}
-      ${(()=>{
-        if(!plan||plan.type!=='cardio')return'';
-        const sIdx=Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1);
-        const rs=FIT_RUN_PLAN[sIdx];if(!rs)return'';
-        const intervals=rs.intervals.map(iv=>{
-          const paceStr=iv.pace+'km/h';
-          const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';
-          const col=iv.t==='run'?'#c0392b':'#219150';
-          return`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${iv.t==='run'?'Run':'Walk'} ${durStr} @ ${paceStr}</span>`;
-        }).join(' ');
-        return`<details style="margin-top:8px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;list-style:none;">🏃 Session ${sIdx+1}: ${rs.wLabel} ▸</summary><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${intervals}</div></details>`;
-      })()}
     </div>`;
   }).join('');
   const toggleHTML=`<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.75rem;">Schedule</div>
   <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
-    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">Your recommended weekly plan</div>
+    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">Next 7 days — smart recommendations</div>
     ${planRows}
   </div>
   <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">Custom schedule overrides</div>
@@ -4516,6 +4526,19 @@ function fitScheduleRun(dayName){
   fitSchedule[dayName].push({type:'run',planSessionIdx:sessionIdx});
   save();
   showToast(`Run Session ${sessionIdx+1} scheduled for ${dayName}s`);
+  rFitToday();
+}
+
+function fitScheduleRecovery(dateStr){
+  if(!dateStr)dateStr=td();
+  const dayName=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+  const doneCount=fitSessions.filter(s=>s.type==='recovery').length;
+  const sessionIdx=Math.min(doneCount,FIT_ACTIVE_RECOVERY_PLAN.length-1);
+  if(!fitSchedule[dayName])fitSchedule[dayName]=[];
+  fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='recovery');
+  fitSchedule[dayName].push({type:'recovery',planSessionIdx:sessionIdx});
+  save();
+  showToast(`Recovery session ${sessionIdx+1} scheduled for ${dayName}s`);
   rFitToday();
 }
 
@@ -4828,11 +4851,11 @@ function fitDeleteGroup(){
 
 // ─────────────────────────── DEFAULT GROUPS ──────────────────────────────────
 const FIT_DEFAULT_GROUPS=[
-  {id:'dgrp_1',name:'Push Day',exerciseIds:['dex_2','dex_4','dex_5','dex_7','dex_8','dex_9','dex_22','dex_24','dex_26','dex_40','dex_39','dex_43']},
-  {id:'dgrp_2',name:'Pull Day',exerciseIds:['dex_12','dex_13','dex_14','dex_19','dex_18','dex_20','dex_31','dex_33','dex_34','dex_35','dex_36']},
-  {id:'dgrp_3',name:'Leg Day',exerciseIds:['dex_46','dex_47','dex_48','dex_51','dex_52','dex_55','dex_56','dex_61','dex_62','dex_58','dex_59']},
-  {id:'dgrp_4',name:'Core',exerciseIds:['dex_66','dex_67','dex_68','dex_69','dex_71','dex_72','dex_73']},
-  {id:'dgrp_5',name:'Push Day B',exerciseIds:['dex_3','dex_6','dex_10','dex_23','dex_25','dex_27','dex_28','dex_38','dex_41','dex_44']},
+  {id:'grp_push_a',name:'Push A',muscles:['Chest','Front Delt','Triceps'],exerciseIds:['dex_1','dex_4','dex_7','dex_22','dex_24','dex_40','dex_39']},
+  {id:'grp_pull',name:'Pull',muscles:['Lats','Traps','Rear Delt','Biceps'],exerciseIds:['dex_13','dex_12','dex_18','dex_27','dex_30','dex_33','dex_20']},
+  {id:'grp_legs',name:'Legs',muscles:['Quads','Hamstrings','Glutes','Calves'],exerciseIds:['dex_45','dex_48','dex_51','dex_54','dex_56','dex_61','dex_58']},
+  {id:'grp_push_b',name:'Push B',muscles:['Chest','Front Delt','Side Delt','Triceps'],exerciseIds:['dex_2','dex_5','dex_6','dex_23','dex_25','dex_43','dex_44']},
+  {id:'grp_core',name:'Core',muscles:['Abs','Lats'],exerciseIds:['dex_68','dex_69','dex_67','dex_71']},
 ];
 
 // Weekly plan: day index 0=Sun,1=Mon,...6=Sat → workout type key
@@ -4891,6 +4914,17 @@ const FIT_RUN_PLAN=[
   {s:32,w:11,wLabel:'Goal Pace',phase:2,intervals:[{t:'walk',dur:5,pace:5.0,lbl:'Warm-up'},{t:'run',dur:30,pace:10.0,lbl:'5K in 30 min'},{t:'walk',dur:5,pace:5.0,lbl:'Cool-down'}]},
   {s:33,w:11,wLabel:'Goal Pace',phase:2,intervals:[{t:'walk',dur:5,pace:5.0,lbl:'Warm-up'},{t:'run',dur:30,pace:10.0,lbl:'5K in 30 min'},{t:'walk',dur:5,pace:5.0,lbl:'Cool-down'}]},
 ];
+const FIT_ACTIVE_RECOVERY_PLAN=[
+  {session:1,label:'Recovery Walk 1',totalMin:20,note:'Easy walk, no running. Focus on breathing and loose movement.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'walk',dur:10,pace:5.5,label:'Active walk'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:2,label:'Recovery Walk 2',totalMin:25,note:'Slightly longer walk. Light arm swings and hip circles mid-session.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'walk',dur:15,pace:5.5,label:'Active walk'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:3,label:'Walk + Mobility',totalMin:30,note:'Walk + 5 min mobility work (hip circles, shoulder rolls, cat-cow).',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'walk',dur:15,pace:5.5,label:'Active walk'},{t:'mobility',dur:5,pace:0,label:'Mobility circuit (no treadmill)'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:4,label:'Recovery Walk 3',totalMin:30,note:'Comfortable pace, focus on posture and full breathing.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'walk',dur:20,pace:5.5,label:'Active walk'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:5,label:'Easy Walk/Jog 1',totalMin:25,note:'Very easy jog intervals. If it feels like effort, slow down.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:3,pace:5.0,label:'Walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:3,pace:5.0,label:'Walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:3,pace:5.0,label:'Walk'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:6,label:'Easy Walk/Jog 2',totalMin:28,note:'One extra jog interval. Keep it conversational pace.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:2.5,pace:5.0,label:'Walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:2.5,pace:5.0,label:'Walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:2.5,pace:5.0,label:'Walk'},{t:'jog',dur:1,pace:7.0,label:'Easy jog'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:7,label:'Easy Walk/Jog 3',totalMin:30,note:'Longer walk windows. Still very relaxed jog pace.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'jog',dur:1.5,pace:7.0,label:'Easy jog'},{t:'walk',dur:2.5,pace:5.0,label:'Walk'},{t:'jog',dur:1.5,pace:7.0,label:'Easy jog'},{t:'walk',dur:2.5,pace:5.0,label:'Walk'},{t:'jog',dur:1.5,pace:7.0,label:'Easy jog'},{t:'walk',dur:2.5,pace:5.0,label:'Walk'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+  {session:8,label:'Easy Walk/Jog 4',totalMin:30,note:'You should feel recovered and ready to run after this.',intervals:[{t:'walk',dur:5,pace:4.5,label:'Warm-up walk'},{t:'jog',dur:2,pace:7.5,label:'Easy jog'},{t:'walk',dur:2,pace:5.0,label:'Walk'},{t:'jog',dur:2,pace:7.5,label:'Easy jog'},{t:'walk',dur:2,pace:5.0,label:'Walk'},{t:'jog',dur:2,pace:7.5,label:'Easy jog'},{t:'walk',dur:2,pace:5.0,label:'Walk'},{t:'walk',dur:5,pace:4.0,label:'Cool-down walk'}]},
+];
+
 const FIT_RUN_MILESTONES=[
   {id:'m1',label:'First Run',desc:'Log your first cardio session',icon:'👟',check:s=>s.filter(x=>x.type==='cardio').length>=1},
   {id:'m2',label:'5 min continuous',desc:'Run 5 minutes without stopping',icon:'⏱️',check:s=>s.some(x=>x.type==='cardio'&&(x.intervals||[]).some(iv=>iv.type==='run'&&(iv.durationSec||0)>=300))},
@@ -5765,24 +5799,66 @@ function rFitRunning(){
 }
 
 // ─────────────────────────── SCHEDULE RECOMMENDATION ────────────────────────
-function fitGetRecommendation(){
-  const dow=new Date().getDay();
-  const plan=FIT_WEEKLY_PLAN[dow];if(!plan)return null;
-  if(plan.type==='rest')return{label:'Rest Day',sub:'Enjoy your day off 💤',type:'rest'};
-  // Find how long since each muscle in this plan was last trained
-  const now=new Date();
-  let maxDays=0;
-  (plan.muscles||[]).forEach(m=>{
-    for(let i=fitSessions.length-1;i>=0;i--){
-      const s=fitSessions[i];if(!s.date)continue;
-      const worked=s.type==='cardio'
-        ?(m==='Cardio'||m==='Legs')
-        :(s.items||[]).some(item=>{const ex=fitExercises.find(x=>x.id===item.exId);return ex&&(ex.muscles||[]).includes(m);});
-      if(worked){const days=Math.round((now-new Date(s.date))/86400000);maxDays=Math.max(maxDays,days);break;}
+function fitGetRecommendation(dateStr){
+  if(!dateStr)dateStr=td();
+  const dow=new Date(dateStr+'T12:00:00').getDay(); // 0=Sun
+  if(dow===0)return{type:'rest',label:'Rest Day',reason:'Sunday — full recovery'};
+  const now=Date.now();
+  const msPerDay=86400000;
+  // Check consecutive training days up to today
+  let streak=0;
+  for(let i=1;i<=7;i++){
+    const d=new Date(now-i*msPerDay).toISOString().slice(0,10);
+    const trained=fitSessions.some(s=>s.date===d&&(s.type==='lifting'||s.type==='cardio'));
+    if(trained)streak++;else break;
+  }
+  if(streak>=3)return{type:'rest',label:'Rest Recommended',reason:`${streak} consecutive days — recovery needed`};
+  // Days since each group was last trained
+  const liftGroups=['grp_push_a','grp_pull','grp_legs','grp_push_b','grp_core'];
+  const groupLastTrained={};
+  liftGroups.forEach(gid=>{
+    const sessions=fitSessions.filter(s=>s.groupId===gid);
+    if(!sessions.length){groupLastTrained[gid]=999;}
+    else{
+      const last=Math.max(...sessions.map(s=>new Date(s.date+'T12:00:00').getTime()));
+      groupLastTrained[gid]=Math.round((now-last)/msPerDay);
     }
   });
-  const recov=maxDays>=2?`(${maxDays}d since last ${plan.label.replace(' Day','')})`:'(recently trained)';
-  return{label:plan.label,sub:recov,type:plan.type,group:plan.group,muscles:plan.muscles,days:maxDays};
+  // Days since cardio
+  const cardioSessions=fitSessions.filter(s=>s.type==='cardio'||s.type==='run');
+  const lastCardio=cardioSessions.length?Math.max(...cardioSessions.map(s=>new Date(s.date+'T12:00:00').getTime())):null;
+  const daysSinceCardio=lastCardio?Math.round((now-lastCardio)/msPerDay):999;
+  // Imbalance score per group
+  function groupImbalance(gid){
+    const g=fitGroups.find(x=>x.id===gid);
+    if(!g||!g.exerciseIds)return 0;
+    const gaps=g.exerciseIds.map(eid=>{
+      const ex=fitExercises.find(x=>x.id===eid);if(!ex)return 0;
+      const isBW=(ex.unit||'lbs')==='bw';
+      const curr=isBW?(ex.targetReps||ex.sr||0):(ex.targetWeight||ex.sw||0);
+      const goal=isBW?(ex.goalReps||ex.gr||1):(ex.goalWeight||ex.gw||1);
+      return Math.max(0,1-(curr/goal));
+    });
+    return gaps.length?gaps.reduce((a,b)=>a+b,0)/gaps.length:0;
+  }
+  const scores=liftGroups.map(gid=>{
+    const daysSince=groupLastTrained[gid]||0;
+    if(daysSince<2)return{gid,score:-1};
+    const recency=Math.min(daysSince/7,1)*0.6;
+    const imbalance=groupImbalance(gid)*0.4;
+    return{gid,score:recency+imbalance};
+  }).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+  const cardioScore=Math.min(daysSinceCardio/4,1)*0.9+(streak>=2?0.2:0);
+  if(cardioScore>0.7&&(scores.length===0||cardioScore>scores[0].score)){
+    return{type:'cardio',label:'Run / Cardio',reason:daysSinceCardio===999?'No recent runs':`Last run ${daysSinceCardio} day${daysSinceCardio===1?'':'s'} ago`};
+  }
+  if(scores.length===0){
+    return{type:'recovery',label:'Active Recovery',reason:'All groups trained recently — light movement day'};
+  }
+  const best=scores[0];
+  const g=fitGroups.find(x=>x.id===best.gid);
+  const daysSince=groupLastTrained[best.gid];
+  return{type:'lifting',group:g,label:g?g.name:'Workout',reason:daysSince===999?'Not yet trained':`Last trained ${daysSince} day${daysSince===1?'':'s'} ago`};
 }
 
 // ─────────────────────────── TARGETS TAB ─────────────────────────────────────
