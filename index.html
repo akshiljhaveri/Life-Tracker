@@ -997,7 +997,6 @@ body.dark{
     </div>
     <div class="dc"><h3>Archived</h3><div class="db" id="darc">0</div><div class="ds2">tasks saved</div></div>
     <div class="dc"><h3>Overdue</h3><div class="db" id="dov" style="color:var(--red)">0</div><div class="ds2">need attention</div></div>
-    <div class="dc full"><h3>Muscle activity — last 7 days</h3><div id="muscle-skeleton-wrap"></div></div>
   </div>
 </div>
 
@@ -2934,7 +2933,6 @@ function rDash(){
   const hd2=document.getElementById('hdays');const hg=document.getElementById('hg');
   hd2.innerHTML=days.map(d=>`<span class="hday">${d}</span>`).join('');hg.innerHTML='';
   for(let i=27;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);const k=d.toISOString().slice(0,10);const cnt=tasks.filter(t=>t.done&&t.due===k).length+(streak.dates[k]?1:0);const cl=cnt===0?'':cnt===1?'h1':cnt<=3?'h2':cnt<=6?'h3':'h4';hg.innerHTML+=`<div class="hc ${cl}" title="${k}: ${cnt}"></div>`;}
-  rMuscleSkeleton();
 }
 
 // ─────────────────────────── MUSCLE SKELETON ─────────────────────────────────
@@ -4679,21 +4677,22 @@ function fitRenderHistoryList(){
   const sorted=[...fitSessions].reverse();
   return sorted.map(s=>{
     const elapsed=s.endTime?fitFmtElapsed(s.endTime-s.startTime):'–';
-    const ts=(s.items||[]).reduce((a,e)=>a+e.sets.length,0);
-    const exRows=(s.items||[]).filter(e=>(e.sets||[]).length).map(e=>{
-      const best=(e.sets||[]).reduce((a,b)=>(b.weightKg||0)>(a.weightKg||0)?b:a,e.sets[0]);
-      return `<div class="fit-hist-ex-row">${esc(e.name)}: ${e.sets.length} sets · best ${fitFmtWeight(best.weightKg,best.unit)} × ${best.reps} reps</div>`;
+    const ts=(s.items||[]).reduce((a,e)=>a+(Array.isArray(e.sets)?e.sets.length:0),0);
+    const exRows=(s.items||[]).filter(e=>e&&Array.isArray(e.sets)&&e.sets.length).map(e=>{
+      const validSets=e.sets.filter(b=>b&&typeof b==='object');
+      const best=validSets.length?validSets.reduce((a,b)=>(b.weightKg||0)>(a.weightKg||0)?b:a,validSets[0]):{weightKg:0,unit:'kg',reps:0};
+      return `<div class="fit-hist-ex-row">${esc(e.name)}: ${e.sets.length} sets · best ${fitFmtWeight(best.weightKg||0,best.unit||'kg')} × ${best.reps||0} reps</div>`;
     }).join('');
     return `<div class="fit-hist-card">
       <div class="fit-hist-head">
-        <div class="fit-hist-name">${esc(s.name)}</div>
+        <div class="fit-hist-name">${esc(s.name||'Workout')}</div>
         <div class="fit-hist-date">${s.date||''}</div>
         <button class="fit-ghost-btn" onclick="fitOpenHistoryEdit('${s.id}')" style="font-size:11px;padding:4px 8px;">Edit</button>
       </div>
       <div class="fit-hist-stats">
         <span>⏱ ${elapsed}</span>
         <span>🏋️ ${ts} sets</span>
-        <span>💪 ${(s.items||[]).filter(e=>e.sets.length).length} exercises</span>
+        <span>💪 ${(s.items||[]).filter(e=>e&&Array.isArray(e.sets)&&e.sets.length).length} exercises</span>
       </div>
       ${exRows}
     </div>`;
@@ -4768,26 +4767,30 @@ function fitShowDayWorkouts(dateStr){
 let fitEditingSessionId=null;
 
 function fitOpenHistoryEdit(sessionId){
-  fitEditingSessionId=sessionId;
-  const s=fitSessions.find(x=>x.id===sessionId);if(!s)return;
-  document.getElementById('fit-hist-edit-title').textContent='Edit: '+s.name;
+  const s=fitSessions.find(x=>x.id===sessionId)||fitSessions.find(x=>String(x.id)===String(sessionId));
+  if(!s){showToast('Session not found.');return;}
+  fitEditingSessionId=s.id;
+  document.getElementById('fit-hist-edit-title').textContent='Edit: '+(s.name||'Workout');
   document.getElementById('fit-hist-edit-name').value=s.name||'';
   document.getElementById('fit-hist-edit-date').value=s.date||'';
-  fitRenderHistoryEditExercises(s);
   openM('fit-hist-edit-modal');
+  try{fitRenderHistoryEditExercises(s);}catch(e){document.getElementById('fit-hist-edit-exercises').innerHTML='<div style="color:var(--red);font-size:13px;">Error loading exercises: '+e.message+'</div>';}
 }
 
 function fitRenderHistoryEditExercises(s){
   const el=document.getElementById('fit-hist-edit-exercises');
+  if(!el)return;
   if(!(s.items||[]).length){el.innerHTML='<div style="font-size:13px;color:var(--text-faint);padding:8px 0;">No exercises recorded.</div>';return;}
   el.innerHTML=(s.items||[]).map((item,ei)=>{
-    const setRows=(item.sets||[]).map((set,si)=>`
+    if(!item)return '';
+    const sets=Array.isArray(item.sets)?item.sets:[];
+    const setRows=sets.filter(set=>set&&typeof set==='object').map((set,si)=>`
       <div class="fit-edit-set-row">
         <div class="fit-sheet-set-num">${si+1}</div>
-        <input class="fit-edit-set-inp" type="number" inputmode="decimal" value="${set.unit==='lbs'?fitKgToLbs(set.weightKg):set.weightKg}" data-ei="${ei}" data-si="${si}" data-field="weight" onchange="fitUpdateHistSet(this)"/>
-        <input class="fit-edit-set-inp" type="number" inputmode="numeric" value="${set.reps}" data-ei="${ei}" data-si="${si}" data-field="reps" onchange="fitUpdateHistSet(this)"/>
+        <input class="fit-edit-set-inp" type="number" inputmode="decimal" value="${set.unit==='lbs'?fitKgToLbs(set.weightKg||0):(set.weightKg||0)}" data-ei="${ei}" data-si="${si}" data-field="weight" onchange="fitUpdateHistSet(this)"/>
+        <input class="fit-edit-set-inp" type="number" inputmode="numeric" value="${set.reps||0}" data-ei="${ei}" data-si="${si}" data-field="reps" onchange="fitUpdateHistSet(this)"/>
         <select class="fit-edit-unit-sel" data-ei="${ei}" data-si="${si}" data-field="unit" onchange="fitUpdateHistUnit(this)">
-          <option value="kg"${set.unit==='kg'?' selected':''}>kg</option>
+          <option value="kg"${set.unit==='kg'||!set.unit?' selected':''}>kg</option>
           <option value="lbs"${set.unit==='lbs'?' selected':''}>lbs</option>
         </select>
         <button class="fit-sheet-set-del" onclick="fitDelHistSet(${ei},${si})">×</button>
@@ -4830,13 +4833,16 @@ function fitUpdateHistUnit(sel){
 
 function fitDelHistSet(ei,si){
   const s=fitSessions.find(x=>x.id===fitEditingSessionId);if(!s)return;
-  s.items[ei].sets.splice(si,1);
+  const item=s.items[ei];if(!item)return;
+  if(!Array.isArray(item.sets))item.sets=[];
+  item.sets.splice(si,1);
   fitRenderHistoryEditExercises(s);
 }
 
 function fitAddHistSet(ei){
   const s=fitSessions.find(x=>x.id===fitEditingSessionId);if(!s)return;
   const item=s.items[ei];if(!item)return;
+  if(!Array.isArray(item.sets))item.sets=[];
   const last=item.sets.length?item.sets[item.sets.length-1]:{weightKg:0,reps:0,unit:'kg'};
   item.sets.push({...last});
   fitRenderHistoryEditExercises(s);
@@ -4910,10 +4916,15 @@ function rFitDash(){
     <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;">Top exercises (by sets)</div>
     ${barRows}
   </div>`:''}
-  ${pbRows?`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;">
+  ${pbRows?`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
     <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Personal bests</div>
     ${pbRows}
-  </div>`:''}`;
+  </div>`:''}
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;">
+    <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;">Muscle activity — last 7 days</div>
+    <div id="muscle-skeleton-wrap"></div>
+  </div>`;
+  rMuscleSkeleton();
 }
 
 // close backdrop for fitness modals
