@@ -759,7 +759,7 @@ body.dark{
 .muscle-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;white-space:nowrap;}
 .muscle-chip-label{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface2);cursor:pointer;font-size:13px;transition:all .12s;user-select:none;}
 /* SKELETON */
-.skel-wrap{position:relative;display:inline-block;width:100%;max-width:100%;}
+.skel-wrap{position:relative;display:block;width:100%;max-width:520px;margin:0 auto;}
 .skel-img{width:100%;height:auto;display:block;border-radius:8px;}
 .skel-overlay-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
 .skel-ov{position:absolute;border-radius:50%;pointer-events:all;cursor:default;transition:opacity .3s;}
@@ -767,6 +767,23 @@ body.dark{
 .skel-tip{position:fixed;background:var(--accent);color:#F5F3EE;padding:6px 12px;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;pointer-events:none;z-index:9990;box-shadow:0 4px 12px rgba(0,0,0,.2);white-space:nowrap;}
 .skel-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
 .skel-legend-item{font-size:11px;padding:3px 9px;border-radius:10px;font-weight:500;}
+/* Progressive overload target */
+.fit-target-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;background:rgba(45,90,61,.1);color:#2D5A3D;border:1px solid rgba(45,90,61,.2);border-radius:8px;padding:4px 10px;margin-bottom:8px;}
+.fit-target-up{background:rgba(27,79,138,.1);color:#1B4F8A;border-color:rgba(27,79,138,.2);}
+/* Cardio interval rows */
+.fit-interval-row{display:grid;grid-template-columns:60px 1fr 1fr 1fr auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);}
+.fit-interval-badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;text-align:center;}
+.fit-interval-run{background:rgba(192,57,43,.12);color:#c0392b;}
+.fit-interval-walk{background:rgba(39,174,96,.12);color:#219150;}
+.fit-cardio-inp{width:100%;border:1px solid var(--border-md);border-radius:6px;padding:6px 8px;font-size:13px;background:var(--surface);color:var(--text);}
+.fit-cardio-inp:focus{outline:none;border-color:var(--accent);}
+/* Weekly km chart */
+.fit-km-chart{display:flex;align-items:flex-end;gap:4px;height:60px;margin-top:6px;}
+.fit-km-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.fit-km-bar{width:100%;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;transition:height .3s;}
+.fit-km-lbl{font-size:9px;color:var(--text-faint);}
+/* Recommendation badge */
+.fit-rec-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;background:rgba(45,90,61,.1);color:#2D5A3D;border:1px solid rgba(45,90,61,.25);border-radius:20px;padding:5px 12px;font-weight:500;}
 </style>
 </head>
 <body>
@@ -1166,7 +1183,8 @@ body.dark{
         <button id="fit-sheet-lbs-btn" onclick="fitSetSheetUnit('lbs')" style="padding:4px 10px;font-family:'DM Sans',sans-serif;font-size:12px;border:none;cursor:pointer;background:var(--surface2);color:var(--text-muted);">lbs</button>
       </div>
     </div>
-    <div id="fit-sheet-prev" style="font-size:12px;color:var(--text-faint);margin-bottom:1.25rem;"></div>
+    <div id="fit-sheet-target" class="fit-target-badge" style="display:none;margin-bottom:6px;"></div>
+    <div id="fit-sheet-prev" style="font-size:12px;color:var(--text-faint);margin-bottom:1rem;"></div>
     <div id="fit-sheet-sets" style="display:flex;flex-direction:column;gap:0;margin-bottom:1rem;max-height:180px;overflow-y:auto;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.6rem;">
       <div>
@@ -1231,6 +1249,73 @@ body.dark{
       <button class="btn d" onclick="fitDeleteHistorySession()" style="">Delete workout</button>
       <button class="btn" onclick="closeM('fit-hist-edit-modal')">Cancel</button>
       <button class="btn p" onclick="fitSaveHistorySession()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAST WORKOUT MODAL -->
+<div class="mo" id="fit-past-modal">
+  <div class="modal wide">
+    <div class="mt">Log Past Workout</div>
+    <div class="mb" style="max-height:70vh;overflow-y:auto;">
+      <div class="field">
+        <div class="fl">Date</div>
+        <input type="date" id="fit-past-date"/>
+      </div>
+      <div class="field">
+        <div class="fl">Workout name</div>
+        <input type="text" id="fit-past-name" placeholder="e.g. Push Day"/>
+      </div>
+      <div class="field">
+        <div class="fl">Start time (optional)</div>
+        <input type="time" id="fit-past-time" placeholder="09:00"/>
+      </div>
+      <div class="field">
+        <div class="fl" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Exercises</span>
+          <button class="fit-ghost-btn" onclick="fitPastPickExercise()" style="font-size:12px;padding:4px 10px;">+ Add exercise</button>
+        </div>
+        <div id="fit-past-exercises"></div>
+      </div>
+    </div>
+    <div class="ma">
+      <button class="btn" onclick="closeM('fit-past-modal')">Cancel</button>
+      <button class="btn p" onclick="fitSavePastWorkout()">Save workout</button>
+    </div>
+  </div>
+</div>
+
+<!-- CARDIO SESSION MODAL -->
+<div class="mo" id="fit-cardio-modal">
+  <div class="modal wide">
+    <div class="mt">Log Cardio Session</div>
+    <div class="mb" style="max-height:70vh;overflow-y:auto;">
+      <div class="field">
+        <div class="fl">Date</div>
+        <input type="date" id="fit-cardio-date"/>
+      </div>
+      <div class="field">
+        <div class="fl">Session name</div>
+        <input type="text" id="fit-cardio-name" placeholder="e.g. Morning Run"/>
+      </div>
+      <div class="field">
+        <div class="fl">Distance unit</div>
+        <div style="display:flex;gap:8px;">
+          <button class="fit-view-toggle-btn a" id="fit-cardio-km-btn" onclick="fitCardioSetUnit('km')">km</button>
+          <button class="fit-view-toggle-btn" id="fit-cardio-mi-btn" onclick="fitCardioSetUnit('mi')">mi</button>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Intervals</div>
+      <div id="fit-cardio-intervals"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="fit-ghost-btn" onclick="fitAddCardioInterval('run')" style="flex:1;background:rgba(192,57,43,.08);color:#c0392b;border-color:rgba(192,57,43,.2);">+ Run</button>
+        <button class="fit-ghost-btn" onclick="fitAddCardioInterval('walk')" style="flex:1;background:rgba(39,174,96,.08);color:#219150;border-color:rgba(39,174,96,.2);">+ Walk</button>
+      </div>
+      <div id="fit-cardio-summary" style="margin-top:12px;font-size:13px;color:var(--text-muted);padding:10px;background:var(--surface2);border-radius:8px;display:none;"></div>
+    </div>
+    <div class="ma">
+      <button class="btn" onclick="closeM('fit-cardio-modal')">Cancel</button>
+      <button class="btn p" onclick="fitSaveCardioSession()">Save session</button>
     </div>
   </div>
 </div>
@@ -3821,27 +3906,55 @@ function rFitToday(){
   try{
     if(fitActiveSession){rFitSessionCards();return;}
     const today=fitTodayName();
-    const scheduled=fitSchedule[today]||[];
+    const rec=fitGetRecommendation();
     let html='<div style="font-family:\'Fraunces\',serif;font-size:22px;font-weight:400;margin-bottom:.25rem;">Today</div>';
-    html+=`<div style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">${esc(today)}</div>`;
+    html+=`<div style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">${esc(today)}</div>`;
+    // Recommendation badge
+    if(rec&&rec.type!=='rest'){
+      html+=`<div style="margin-bottom:1rem;">
+        <span class="fit-rec-badge">💡 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.sub)}</span></span>
+        ${rec.group?`<button class="fit-pill-btn" onclick="fitStartGroupWorkout('${rec.group}')" style="width:100%;margin-top:8px;">▶ Start ${esc(rec.label)}</button>`:''}
+        ${rec.type==='cardio'?`<button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="width:100%;margin-top:8px;">🏃 Log Run / Cardio</button>`:''}
+      </div>`;
+    } else if(rec&&rec.type==='rest'){
+      html+=`<div style="background:var(--surface2);border-radius:var(--r);padding:12px 16px;margin-bottom:1rem;font-size:13px;color:var(--text-muted);">😴 ${esc(rec.label)} — ${esc(rec.sub)}</div>`;
+    }
+    // Scheduled today
+    const scheduled=fitSchedule[today]||[];
     if(scheduled.length){
       const labels=scheduled.map(item=>{
         if(item.type==='group'){const g=fitGroups.find(x=>x.id===item.id);return g?g.name:'?';}
         else{const e=fitExercises.find(x=>x.id===item.id);return e?e.name:'?';}
       });
       html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">Scheduled</div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">Scheduled for today</div>
         <div style="font-size:14px;color:var(--text);line-height:2;">${labels.map(l=>`<span style="background:var(--surface2);border-radius:var(--rs);padding:3px 10px;margin:2px;display:inline-block;">${esc(l)}</span>`).join(' ')}</div>
-      </div>`;
-      html+=`<button class="fit-pill-btn" onclick="fitStartScheduled()" style="width:100%;margin-bottom:10px;">▶ Start today's workout</button>`;
-    } else {
-      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;font-size:13px;color:var(--text-faint);">Nothing scheduled for ${esc(today)}. Set up your week in the <strong>Schedule</strong> tab, or start a custom workout below.</div>`;
+      </div>
+      <button class="fit-pill-btn" onclick="fitStartScheduled()" style="width:100%;margin-bottom:10px;">▶ Start scheduled workout</button>`;
     }
-    html+=`<button class="fit-ghost-btn" onclick="fitStartBlank()" style="width:100%;">+ Custom workout</button>`;
+    // Quick start buttons for each group
+    html+=`<div style="margin-bottom:10px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">Quick start</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${fitGroups.slice(0,6).map(g=>`<button class="fit-ghost-btn" onclick="fitStartGroupWorkout('${g.id}')" style="font-size:12px;">${esc(g.name)}</button>`).join('')}
+        <button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:12px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Cardio</button>
+      </div>
+    </div>`;
+    html+=`<button class="fit-ghost-btn" onclick="fitStartBlank()" style="width:100%;margin-top:4px;">+ Custom workout</button>`;
     el.innerHTML=html;
   }catch(err){
     el.innerHTML=`<div style="font-size:13px;color:var(--red);padding:1rem;">Error: ${err.message}</div>`;
   }
+}
+
+function fitStartGroupWorkout(groupId){
+  if(fitActiveSession&&!confirm('You have an active session. Discard it?'))return;
+  if(fitSessionTimer)clearInterval(fitSessionTimer);
+  const g=fitGroups.find(x=>x.id===groupId);if(!g){alert('Group not found.');return;}
+  const items=fitResolveItems([{type:'group',id:groupId}]);
+  if(!items.length){alert('No exercises found in this group.');return;}
+  fitActiveSession={id:'ses_'+Date.now(),type:'lifting',name:g.name+' Workout',startTime:Date.now(),items};
+  fitStartTimer();setFitTab('today');
 }
 
 function fitResolveItems(items){
@@ -4029,19 +4142,34 @@ function fitOpenSetSheet(itemId){
   fitCurrentExId=itemId;
   const item=fitActiveSession.items.find(x=>x.id===itemId);if(!item)return;
   document.getElementById('fit-sheet-exname').textContent=item.name;
+  // Show progressive overload target
+  const tgt=fitGetTarget(item.exId);
+  const tgtEl=document.getElementById('fit-sheet-target');
+  if(tgtEl&&tgt&&tgt.weight>0){
+    const rr=tgt.repRange||{min:8,max:12};
+    const isAtMax=tgt.reps>=rr.max;
+    tgtEl.className='fit-target-badge'+(isAtMax?' fit-target-up':'');
+    tgtEl.style.display='inline-flex';
+    tgtEl.textContent=(isAtMax?'⬆ Push for: ':'🎯 Target: ')+tgt.weight+tgt.unit+' × '+tgt.reps+' reps';
+  } else if(tgtEl){tgtEl.style.display='none';}
   // Use last set from current session first, then fall back to last session
   const currentLast=item.sets.length?item.sets[item.sets.length-1]:null;
   const histLast=fitGetLastSet(item.exId);
   const prefill=currentLast||histLast;
+  // Pre-fill with target weight if no history
+  const tgtWeightKg=tgt&&tgt.weight>0?(tgt.unit==='lbs'?fitLbsToKg(tgt.weight):tgt.weight):null;
   const prevText=histLast&&!currentLast?'Last session: '+fitFmtWeight(histLast.weightKg,histLast.unit)+' × '+histLast.reps+' reps'
     :currentLast?'Previous set: '+fitFmtWeight(currentLast.weightKg,currentLast.unit)+' × '+currentLast.reps+' reps'
     :'No previous data';
   document.getElementById('fit-sheet-prev').textContent=prevText;
-  fitSheetUnit=prefill?prefill.unit:'kg';
+  fitSheetUnit=prefill?prefill.unit:(tgt?tgt.unit:'lbs');
   fitSetSheetUnit(fitSheetUnit);
   if(prefill){
     document.getElementById('fit-inp-weight').value=fitSheetUnit==='kg'?prefill.weightKg:fitKgToLbs(prefill.weightKg);
     document.getElementById('fit-inp-reps').value=prefill.reps;
+  } else if(tgtWeightKg){
+    document.getElementById('fit-inp-weight').value=fitSheetUnit==='kg'?tgtWeightKg:fitKgToLbs(tgtWeightKg);
+    document.getElementById('fit-inp-reps').value=tgt.reps||'';
   } else {
     document.getElementById('fit-inp-weight').value='';
     document.getElementById('fit-inp-reps').value='';
@@ -4115,7 +4243,9 @@ function fitPromptFinish(){
 
 function fitFinishWorkout(){
   if(!fitActiveSession)return;
-  fitSessions.push({...fitActiveSession,endTime:Date.now(),date:td()});
+  const completedSession={...fitActiveSession,endTime:Date.now(),date:td(),type:'lifting'};
+  fitSessions.push(completedSession);
+  fitApplyProgressiveOverload(completedSession);
   if(fitSessionTimer)clearInterval(fitSessionTimer);
   fitActiveSession=null;fitCurrentExId=null;
   closeM('fit-finish-modal');save();
@@ -4125,9 +4255,43 @@ function fitFinishWorkout(){
 // ─────────────────────────── SCHEDULE TAB ────────────────────────────────────
 function rFitSchedule(){
   const el=document.getElementById('fit-schedule-panel');
-  const toggleHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px;">
-    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;">Schedule</div>
+  // Build plan overview (shown above the existing week schedule)
+  const now=new Date();
+  const planRows=FIT_DAYS.map((day,i)=>{
+    const dowIdx=[1,2,3,4,5,6,0][i]; // Mon=1 ... Sun=0
+    const plan=FIT_WEEKLY_PLAN[dowIdx];
+    const isToday=fitTodayName()===day;
+    // Days since muscles last trained
+    let daysSince='';
+    if(plan&&plan.muscles.length){
+      let best=0;
+      plan.muscles.forEach(m=>{
+        for(let j=fitSessions.length-1;j>=0;j--){
+          const s=fitSessions[j];if(!s.date)continue;
+          const hit=s.type==='cardio'?['Cardio','Legs'].includes(m):(s.items||[]).some(item=>{const ex=fitExercises.find(x=>x.id===item.exId);return ex&&(ex.muscles||[]).includes(m);});
+          if(hit){const d=Math.round((now-new Date(s.date))/86400000);if(d>best)best=d;break;}
+        }
+      });
+      if(best>0)daysSince=`<span style="font-size:11px;color:${best>=3?'#c0392b':'var(--text-faint)'};">${best}d ago</span>`;
+    }
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;font-size:12px;font-weight:${isToday?600:400};color:${isToday?'var(--accent)':'var(--text-muted)'};">${day.slice(0,3)}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;">${plan?esc(plan.label):'Rest'}</div>
+        ${plan&&plan.muscles.length?`<div style="font-size:11px;color:var(--text-faint);">${plan.muscles.join(' · ')}</div>`:''}
+      </div>
+      ${daysSince}
+      ${isToday?`<span style="font-size:10px;background:var(--accent);color:#F5F3EE;padding:2px 7px;border-radius:10px;">TODAY</span>`:''}
+      ${plan&&plan.group?`<button class="fit-ghost-btn" onclick="fitStartGroupWorkout('${plan.group}')" style="font-size:11px;padding:3px 8px;">▶ Start</button>`:''}
+      ${plan&&plan.type==='cardio'?`<button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:11px;padding:3px 8px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Log</button>`:''}
+    </div>`;
+  }).join('');
+  const toggleHTML=`<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.75rem;">Schedule</div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
+    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">Your weekly plan</div>
+    ${planRows}
   </div>
+  <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">Custom schedule overrides</div>
   <div class="fit-view-toggle">
     <button class="fit-view-toggle-btn${fitScheduleView==='week'?' a':''}" onclick="fitSetScheduleView('week')">Week</button>
     <button class="fit-view-toggle-btn${fitScheduleView==='calendar'?' a':''}" onclick="fitSetScheduleView('calendar')">Calendar</button>
@@ -4451,6 +4615,35 @@ function fitDeleteGroup(){
   save();closeM('fit-group-modal');rFitGroups();
 }
 
+// ─────────────────────────── DEFAULT GROUPS ──────────────────────────────────
+const FIT_DEFAULT_GROUPS=[
+  {id:'dgrp_1',name:'Push Day',exerciseIds:['dex_2','dex_4','dex_5','dex_7','dex_8','dex_9','dex_22','dex_24','dex_26','dex_40','dex_39','dex_43']},
+  {id:'dgrp_2',name:'Pull Day',exerciseIds:['dex_12','dex_13','dex_14','dex_19','dex_18','dex_20','dex_31','dex_33','dex_34','dex_35','dex_36']},
+  {id:'dgrp_3',name:'Leg Day',exerciseIds:['dex_46','dex_47','dex_48','dex_51','dex_52','dex_55','dex_56','dex_61','dex_62','dex_58','dex_59']},
+  {id:'dgrp_4',name:'Core',exerciseIds:['dex_66','dex_67','dex_68','dex_69','dex_71','dex_72','dex_73']},
+  {id:'dgrp_5',name:'Push Day B',exerciseIds:['dex_3','dex_6','dex_10','dex_23','dex_25','dex_27','dex_28','dex_38','dex_41','dex_44']},
+];
+
+// Weekly plan: day index 0=Sun,1=Mon,...6=Sat → workout type key
+const FIT_WEEKLY_PLAN={
+  1:{type:'push',   label:'Push Day',    group:'dgrp_1', muscles:['Chest','Shoulders','Triceps']},
+  2:{type:'pull',   label:'Pull Day',    group:'dgrp_2', muscles:['Back','Biceps']},
+  3:{type:'cardio', label:'Run Day',     group:null,      muscles:['Cardio','Legs']},
+  4:{type:'legs',   label:'Leg Day',     group:'dgrp_3', muscles:['Legs','Hamstrings','Glutes','Calves']},
+  5:{type:'push_b', label:'Push Day B',  group:'dgrp_5', muscles:['Chest','Shoulders','Triceps']},
+  6:{type:'active', label:'Active Recovery / Run', group:null, muscles:['Cardio']},
+  0:{type:'rest',   label:'Rest Day',    group:null,      muscles:[]},
+};
+
+// Default rep ranges by muscle group for progressive overload
+const FIT_REP_RANGES={
+  Chest:{min:8,max:12},Back:{min:8,max:12},Shoulders:{min:10,max:15},
+  Biceps:{min:10,max:15},Triceps:{min:10,max:15},Legs:{min:10,max:15},
+  Hamstrings:{min:10,max:12},Glutes:{min:10,max:15},Calves:{min:12,max:20},
+  Abs:{min:12,max:20},Forearms:{min:12,max:20},Cardio:{min:1,max:1},Other:{min:10,max:15},
+};
+const FIT_WEIGHT_INCREMENT_KG=1.25; // ~2.5lbs
+
 // ─────────────────────────── EXERCISES TAB ───────────────────────────────────
 const FIT_ALL_MUSCLES=['Chest','Back','Shoulders','Biceps','Triceps','Legs','Hamstrings','Glutes','Calves','Abs','Forearms','Cardio','Other'];
 
@@ -4652,13 +4845,17 @@ function rFitHistory(){
   const el=document.getElementById('fit-history-panel');
   const toggleHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px;">
     <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;">History</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:12px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Log cardio</button>
+      <button class="fit-ghost-btn" onclick="fitOpenPastWorkout()" style="font-size:12px;">+ Log past workout</button>
+    </div>
   </div>
   <div class="fit-view-toggle">
     <button class="fit-view-toggle-btn${fitHistoryView==='list'?' a':''}" onclick="fitSetHistoryView('list')">List</button>
     <button class="fit-view-toggle-btn${fitHistoryView==='calendar'?' a':''}" onclick="fitSetHistoryView('calendar')">Calendar</button>
   </div>`;
   if(!fitSessions.length){
-    el.innerHTML=toggleHTML+`<div style="font-size:13px;color:var(--text-faint);">No workouts completed yet.</div>`;
+    el.innerHTML=toggleHTML+`<div style="font-size:13px;color:var(--text-faint);">No workouts yet. Log your first session above!</div>`;
     return;
   }
   if(fitHistoryView==='list'){
@@ -4676,6 +4873,31 @@ function fitSetHistoryView(v){
 function fitRenderHistoryList(){
   const sorted=[...fitSessions].reverse();
   return sorted.map(s=>{
+    if(s.type==='cardio'){
+      // Cardio session card
+      const ivs=s.intervals||[];
+      const totalKm=ivs.reduce((a,iv)=>a+(iv.distanceKm||0),0);
+      const totalSec=ivs.reduce((a,iv)=>a+(iv.durationSec||0),0);
+      const runKm=ivs.filter(iv=>iv.type==='run').reduce((a,iv)=>a+(iv.distanceKm||0),0);
+      const runSec=ivs.filter(iv=>iv.type==='run').reduce((a,iv)=>a+(iv.durationSec||0),0);
+      const paceMin=runSec&&runKm?Math.round(runSec/60/runKm*10)/10:null;
+      const unit=s.distanceUnit||'km';
+      const fmtKm=km=>unit==='mi'?(Math.round(km/1.60934*100)/100)+' mi':(Math.round(km*100)/100)+' km';
+      const ivRows=ivs.map(iv=>`<div class="fit-hist-ex-row"><span class="fit-interval-badge ${iv.type==='run'?'fit-interval-run':'fit-interval-walk'}" style="font-size:10px;margin-right:4px;">${iv.type}</span>${fmtKm(iv.distanceKm||0)}${iv.durationSec?` · ${fitFmtDurSec(iv.durationSec)}`:''}</div>`).join('');
+      return`<div class="fit-hist-card" style="border-left:3px solid #c0392b;">
+        <div class="fit-hist-head">
+          <div class="fit-hist-name">🏃 ${esc(s.name||'Cardio')}</div>
+          <div class="fit-hist-date">${s.date||''}</div>
+          <button class="fit-ghost-btn" onclick="fitOpenHistoryEdit('${s.id}')" style="font-size:11px;padding:4px 8px;">Edit</button>
+        </div>
+        <div class="fit-hist-stats">
+          <span>📏 ${fmtKm(totalKm)}</span>
+          <span>⏱ ${fitFmtDurSec(totalSec)}</span>
+          ${paceMin?`<span>⚡ ${paceMin} min/${unit}</span>`:''}
+        </div>
+        ${ivRows}
+      </div>`;
+    }
     const elapsed=s.endTime?fitFmtElapsed(s.endTime-s.startTime):'–';
     const ts=(s.items||[]).reduce((a,e)=>a+(Array.isArray(e.sets)?e.sets.length:0),0);
     const exRows=(s.items||[]).filter(e=>e&&Array.isArray(e.sets)&&e.sets.length).map(e=>{
@@ -4861,6 +5083,286 @@ function fitDeleteHistorySession(){
   save();closeM('fit-hist-edit-modal');rFitHistory();
 }
 
+// ─────────────────────────── PROGRESSIVE OVERLOAD ────────────────────────────
+function fitGetTarget(exId){
+  const e=fitExercises.find(x=>x.id===exId);
+  if(!e)return null;
+  return{weight:e.targetWeight||0,unit:e.targetWeightUnit||'lbs',reps:e.targetReps||e.repRange?.min||8,repRange:e.repRange||{min:8,max:12}};
+}
+
+function fitApplyProgressiveOverload(session){
+  if(!session||(session.type&&session.type!=='lifting'))return;
+  const now=new Date().toISOString().slice(0,10);
+  (session.items||[]).forEach(item=>{
+    const ex=fitExercises.find(x=>x.id===item.exId);if(!ex)return;
+    const sets=(item.sets||[]).filter(s=>s&&typeof s==='object');if(!sets.length)return;
+    // Best set: highest reps at the target weight (or highest reps overall)
+    const tgtKg=ex.targetWeightUnit==='lbs'?fitLbsToKg(ex.targetWeight||0):(ex.targetWeight||0);
+    const tgtSets=sets.filter(s=>(s.weightKg||0)>=tgtKg*0.95);
+    const bestSets=tgtSets.length?tgtSets:sets;
+    const bestReps=Math.max(...bestSets.map(s=>s.reps||0));
+    const rr=ex.repRange||{min:8,max:12};
+    if(bestReps>=rr.max){
+      ex.consecutiveMaxReps=(ex.consecutiveMaxReps||0)+1;
+      if(ex.consecutiveMaxReps>=2){
+        // Increase weight, drop back to min reps
+        const incKg=ex.weightIncrement||FIT_WEIGHT_INCREMENT_KG;
+        const newKg=(tgtKg||0)+incKg;
+        ex.targetWeight=ex.targetWeightUnit==='lbs'?Math.round(fitKgToLbs(newKg)*2)/2:Math.round(newKg*4)/4;
+        ex.targetReps=rr.min;
+        ex.consecutiveMaxReps=0;
+        showToast(`⬆ ${esc(ex.name)}: weight up to ${ex.targetWeight}${ex.targetWeightUnit}`);
+      } else {
+        ex.targetReps=rr.max;
+      }
+    } else if(bestReps>0){
+      ex.consecutiveMaxReps=0;
+      // Progress reps toward max; next target = best reps + 1 (capped at max)
+      ex.targetReps=Math.min(bestReps+1,rr.max);
+      // If no target weight set yet, seed it from this session
+      if(!ex.targetWeight&&tgtKg>0){
+        ex.targetWeight=ex.targetWeightUnit==='lbs'?Math.round(fitKgToLbs(tgtKg)*2)/2:tgtKg;
+      }
+    }
+  });
+}
+
+// ─────────────────────────── PAST WORKOUT LOGGING ────────────────────────────
+let fitPastExercises=[]; // [{exId, name, sets:[{weightKg,reps,unit}]}]
+
+function fitOpenPastWorkout(){
+  const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
+  document.getElementById('fit-past-date').value=yesterday.toISOString().slice(0,10);
+  document.getElementById('fit-past-name').value='';
+  document.getElementById('fit-past-time').value='';
+  fitPastExercises=[];
+  fitRenderPastExercises();
+  openM('fit-past-modal');
+}
+
+function fitPastPickExercise(){
+  fitLibPickerSelected=new Set(fitPastExercises.map(x=>x.exId));
+  fitOpenLibPicker(ids=>{
+    ids.forEach(id=>{
+      if(!fitPastExercises.find(x=>x.exId===id)){
+        const e=fitExercises.find(x=>x.id===id);
+        if(e)fitPastExercises.push({exId:e.id,name:e.name,sets:[]});
+      }
+    });
+    // Remove deselected
+    fitPastExercises=fitPastExercises.filter(x=>ids.has(x.exId));
+    fitRenderPastExercises();
+  });
+}
+
+function fitRenderPastExercises(){
+  const el=document.getElementById('fit-past-exercises');
+  if(!fitPastExercises.length){el.innerHTML='<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No exercises yet. Tap + Add exercise above.</div>';return;}
+  el.innerHTML=fitPastExercises.map((item,ei)=>{
+    const t=fitGetTarget(item.exId);
+    const tgtTxt=t&&t.weight?`Target: ${t.weight}${t.unit} × ${t.reps}`:'';
+    const setRows=(item.sets||[]).map((s,si)=>`
+      <div class="fit-edit-set-row">
+        <div class="fit-sheet-set-num">${si+1}</div>
+        <input class="fit-edit-set-inp" type="number" inputmode="decimal" placeholder="wt" value="${s.unit==='lbs'?fitKgToLbs(s.weightKg||0):(s.weightKg||0)}" onchange="fitPastUpdateSet(${ei},${si},'weight',this.value)"/>
+        <input class="fit-edit-set-inp" type="number" inputmode="numeric" placeholder="reps" value="${s.reps||''}" onchange="fitPastUpdateSet(${ei},${si},'reps',this.value)"/>
+        <select class="fit-edit-unit-sel" onchange="fitPastUpdateSet(${ei},${si},'unit',this.value)">
+          <option value="lbs"${s.unit==='lbs'?' selected':''}>lbs</option>
+          <option value="kg"${s.unit==='kg'?' selected':''}>kg</option>
+        </select>
+        <button class="fit-sheet-set-del" onclick="fitPastDelSet(${ei},${si})">×</button>
+      </div>`).join('');
+    return`<div style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div style="font-size:14px;font-weight:500;flex:1;">${esc(item.name)}</div>
+        <button class="fit-ghost-btn" onclick="fitPastAddSet(${ei})" style="font-size:11px;padding:3px 8px;">+ Set</button>
+        <button class="fit-ghost-btn" onclick="fitPastDelEx(${ei})" style="font-size:11px;padding:3px 8px;color:var(--red);">✕</button>
+      </div>
+      ${tgtTxt?`<div style="font-size:11px;color:var(--text-faint);margin-bottom:4px;">${tgtTxt}</div>`:''}
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);display:grid;grid-template-columns:28px 1fr 1fr 60px auto;gap:6px;padding:0 0 3px;">#WeightRepsUnit</div>
+      ${setRows||'<div style="font-size:12px;color:var(--text-faint);">No sets — tap + Set</div>'}
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:4px 0 10px;">');
+}
+
+function fitPastAddSet(ei){
+  const item=fitPastExercises[ei];if(!item)return;
+  const last=item.sets.length?{...item.sets[item.sets.length-1]}:{weightKg:0,reps:0,unit:'lbs'};
+  item.sets.push(last);fitRenderPastExercises();
+}
+function fitPastDelSet(ei,si){fitPastExercises[ei].sets.splice(si,1);fitRenderPastExercises();}
+function fitPastDelEx(ei){fitPastExercises.splice(ei,1);fitRenderPastExercises();}
+function fitPastUpdateSet(ei,si,field,val){
+  const set=fitPastExercises[ei]?.sets[si];if(!set)return;
+  if(field==='weight'){const v=parseFloat(val);if(!isNaN(v))set.weightKg=set.unit==='lbs'?fitLbsToKg(v):v;}
+  else if(field==='reps'){const v=parseInt(val);if(!isNaN(v))set.reps=v;}
+  else if(field==='unit'){set.unit=val;/* weight already stored as kg */}
+}
+
+function fitSavePastWorkout(){
+  const dateVal=document.getElementById('fit-past-date').value;
+  if(!dateVal){alert('Please select a date.');return;}
+  const name=document.getElementById('fit-past-name').value.trim()||'Past Workout';
+  const timeVal=document.getElementById('fit-past-time').value;
+  let startTs=new Date(dateVal+'T'+(timeVal||'09:00')+':00').getTime();
+  if(isNaN(startTs))startTs=new Date(dateVal).getTime();
+  const items=fitPastExercises.filter(x=>x.sets.length>0).map(x=>({
+    id:'si_'+Date.now()+Math.random(),exId:x.exId,name:x.name,groupName:'',sets:x.sets
+  }));
+  const session={id:'ses_'+Date.now(),type:'lifting',name,date:dateVal,startTime:startTs,endTime:startTs+3600000,items};
+  fitSessions.push(session);
+  fitSessions.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  fitApplyProgressiveOverload(session);
+  save();closeM('fit-past-modal');rFitHistory();
+  showToast('✅ Past workout saved');
+}
+
+// ─────────────────────────── CARDIO SESSION ──────────────────────────────────
+let fitCardioUnit='km';
+let fitCardioIntervals=[];
+
+function fitOpenCardioModal(dateStr){
+  const d=dateStr||(()=>{const n=new Date();n.setDate(n.getDate());return n.toISOString().slice(0,10);})();
+  document.getElementById('fit-cardio-date').value=d;
+  document.getElementById('fit-cardio-name').value='Run Session';
+  fitCardioUnit='km';
+  fitCardioIntervals=[];
+  fitCardioSetUnit('km');
+  fitRenderCardioIntervals();
+  openM('fit-cardio-modal');
+}
+
+function fitCardioSetUnit(u){
+  fitCardioUnit=u;
+  document.getElementById('fit-cardio-km-btn').classList.toggle('a',u==='km');
+  document.getElementById('fit-cardio-mi-btn').classList.toggle('a',u==='mi');
+  fitRenderCardioIntervals();
+}
+
+function fitAddCardioInterval(type){
+  fitCardioIntervals.push({type,distanceKm:null,durationSec:null,speedKmh:null});
+  fitRenderCardioIntervals();
+  // scroll to bottom of modal
+  const mb=document.querySelector('#fit-cardio-modal .mb');if(mb)mb.scrollTop=mb.scrollHeight;
+}
+
+function fitCalcCardioAuto(i){
+  const iv=fitCardioIntervals[i];if(!iv)return;
+  const hasD=iv.distanceKm!==null,hasT=iv.durationSec!==null,hasSp=iv.speedKmh!==null;
+  if(hasD&&hasT&&!hasSp){iv.speedKmh=Math.round((iv.distanceKm/(iv.durationSec/3600))*10)/10;}
+  else if(hasD&&hasSp&&!hasT){iv.durationSec=Math.round(iv.distanceKm/iv.speedKmh*3600);}
+  else if(hasT&&hasSp&&!hasD){iv.distanceKm=Math.round(iv.speedKmh*(iv.durationSec/3600)*100)/100;}
+  fitRenderCardioIntervals();
+  fitUpdateCardioSummary();
+}
+
+function fitCardioFieldChange(i,field,val){
+  const iv=fitCardioIntervals[i];if(!iv)return;
+  if(field==='dist'){
+    const v=parseFloat(val);
+    iv.distanceKm=isNaN(v)?null:(fitCardioUnit==='mi'?v*1.60934:v);
+  } else if(field==='dur'){
+    // mm:ss or just seconds
+    if(val.includes(':')){const[m,s]=val.split(':').map(Number);iv.durationSec=(!isNaN(m)&&!isNaN(s))?m*60+s:null;}
+    else{const v=parseFloat(val);iv.durationSec=isNaN(v)?null:v*60;}
+  } else if(field==='spd'){
+    const v=parseFloat(val);
+    iv.speedKmh=isNaN(v)?null:(fitCardioUnit==='mi'?v*1.60934:v);
+  }
+  fitCalcCardioAuto(i);
+}
+
+function fitDelCardioInterval(i){fitCardioIntervals.splice(i,1);fitRenderCardioIntervals();fitUpdateCardioSummary();}
+
+function fitFmtDurSec(sec){if(!sec)return'';const m=Math.floor(sec/60),s=Math.round(sec%60);return m+':'+(s<10?'0':'')+s;}
+function fitFmtDist(km){return fitCardioUnit==='mi'?(Math.round(km/1.60934*100)/100)+' mi':(Math.round(km*100)/100)+' km';}
+
+function fitRenderCardioIntervals(){
+  const el=document.getElementById('fit-cardio-intervals');if(!el)return;
+  if(!fitCardioIntervals.length){el.innerHTML='<div style="font-size:12px;color:var(--text-faint);padding:6px 0;">No intervals yet. Add a Run or Walk interval below.</div>';return;}
+  const distLbl=fitCardioUnit==='mi'?'Distance (mi)':'Distance (km)';
+  const spdLbl=fitCardioUnit==='mi'?'Speed (mph)':'Speed (km/h)';
+  el.innerHTML=fitCardioIntervals.map((iv,i)=>{
+    const cls=iv.type==='run'?'fit-interval-run':'fit-interval-walk';
+    const distVal=iv.distanceKm!==null?(fitCardioUnit==='mi'?Math.round(iv.distanceKm/1.60934*100)/100:Math.round(iv.distanceKm*100)/100):'';
+    const durVal=iv.durationSec!==null?fitFmtDurSec(iv.durationSec):'';
+    const spdVal=iv.speedKmh!==null?(fitCardioUnit==='mi'?Math.round(iv.speedKmh/1.60934*10)/10:iv.speedKmh):'';
+    return`<div style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span class="fit-interval-badge ${cls}">${iv.type}</span>
+        <span style="font-size:11px;color:var(--text-faint);">Enter 2 of 3 → 3rd auto-calculated</span>
+        <button class="fit-sheet-set-del" onclick="fitDelCardioInterval(${i})" style="margin-left:auto;">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div><div style="font-size:10px;color:var(--text-faint);margin-bottom:3px;">${distLbl}</div>
+          <input class="fit-cardio-inp" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 0.5" value="${distVal}" onchange="fitCardioFieldChange(${i},'dist',this.value)"/></div>
+        <div><div style="font-size:10px;color:var(--text-faint);margin-bottom:3px;">Duration (mm:ss)</div>
+          <input class="fit-cardio-inp" type="text" inputmode="decimal" placeholder="e.g. 3:00" value="${durVal}" onchange="fitCardioFieldChange(${i},'dur',this.value)"/></div>
+        <div><div style="font-size:10px;color:var(--text-faint);margin-bottom:3px;">${spdLbl}</div>
+          <input class="fit-cardio-inp" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 8.5" value="${spdVal}" onchange="fitCardioFieldChange(${i},'spd',this.value)"/></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fitUpdateCardioSummary(){
+  const el=document.getElementById('fit-cardio-summary');if(!el)return;
+  const filled=fitCardioIntervals.filter(iv=>iv.distanceKm!==null);
+  if(!filled.length){el.style.display='none';return;}
+  const totalKm=filled.reduce((a,iv)=>a+(iv.distanceKm||0),0);
+  const totalSec=filled.reduce((a,iv)=>a+(iv.durationSec||0),0);
+  const runKm=filled.filter(iv=>iv.type==='run').reduce((a,iv)=>a+(iv.distanceKm||0),0);
+  const runSec=filled.filter(iv=>iv.type==='run').reduce((a,iv)=>a+(iv.durationSec||0),0);
+  const avgPaceKm=runSec&&runKm?Math.round(runSec/60/runKm*10)/10:null;
+  el.style.display='block';
+  el.innerHTML=`<strong>Summary</strong><br>
+    Total: ${fitFmtDist(totalKm)} in ${fitFmtDurSec(totalSec)}<br>
+    Running: ${fitFmtDist(runKm)}${avgPaceKm?` · avg pace ${avgPaceKm} min/${fitCardioUnit}`:''}<br>
+    ${runKm>=4.9?`<span style="color:#2D5A3D;font-weight:500;">🏃 5K distance covered!</span>`:''}`;
+}
+
+function fitSaveCardioSession(){
+  const dateVal=document.getElementById('fit-cardio-date').value;
+  if(!dateVal){alert('Please select a date.');return;}
+  const name=document.getElementById('fit-cardio-name').value.trim()||'Cardio Session';
+  const filled=fitCardioIntervals.filter(iv=>iv.distanceKm!==null||iv.durationSec!==null);
+  if(!filled.length){alert('Add at least one interval.');return;}
+  const totalSec=filled.reduce((a,iv)=>a+(iv.durationSec||0),0);
+  const session={
+    id:'ses_'+Date.now(),type:'cardio',name,date:dateVal,
+    startTime:new Date(dateVal+'T09:00:00').getTime(),
+    endTime:new Date(dateVal+'T09:00:00').getTime()+(totalSec||3600)*1000,
+    distanceUnit:fitCardioUnit,
+    intervals:filled.map(iv=>({...iv})),
+    items:[] // keep items empty for cardio (no lifting sets)
+  };
+  fitSessions.push(session);
+  fitSessions.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  save();closeM('fit-cardio-modal');rFitHistory();
+  showToast('✅ Cardio session saved');
+}
+
+// ─────────────────────────── SCHEDULE RECOMMENDATION ────────────────────────
+function fitGetRecommendation(){
+  const dow=new Date().getDay();
+  const plan=FIT_WEEKLY_PLAN[dow];if(!plan)return null;
+  if(plan.type==='rest')return{label:'Rest Day',sub:'Enjoy your day off 💤',type:'rest'};
+  // Find how long since each muscle in this plan was last trained
+  const now=new Date();
+  let maxDays=0;
+  (plan.muscles||[]).forEach(m=>{
+    for(let i=fitSessions.length-1;i>=0;i--){
+      const s=fitSessions[i];if(!s.date)continue;
+      const worked=s.type==='cardio'
+        ?(m==='Cardio'||m==='Legs')
+        :(s.items||[]).some(item=>{const ex=fitExercises.find(x=>x.id===item.exId);return ex&&(ex.muscles||[]).includes(m);});
+      if(worked){const days=Math.round((now-new Date(s.date))/86400000);maxDays=Math.max(maxDays,days);break;}
+    }
+  });
+  const recov=maxDays>=2?`(${maxDays}d since last ${plan.label.replace(' Day','')})`:'(recently trained)';
+  return{label:plan.label,sub:recov,type:plan.type,group:plan.group,muscles:plan.muscles,days:maxDays};
+}
+
 // ─────────────────────────── DASHBOARD TAB ───────────────────────────────────
 function rFitDash(){
   const el=document.getElementById('fit-dash-panel');
@@ -4873,25 +5375,27 @@ function rFitDash(){
     const worked=fitSessions.some(s=>s.date===ds);
     dots.push(`<div class="fit-dot${worked?' on':''}" title="${ds}"></div>`);
   }
+  const liftSessions=fitSessions.filter(s=>s.type!=='cardio');
+  const cardioSessions=fitSessions.filter(s=>s.type==='cardio');
   const totalSessions=fitSessions.length;
-  const totalSets=fitSessions.reduce((a,s)=>(s.items||[]).reduce((b,e)=>b+e.sets.length,0)+a,0);
+  const totalSets=liftSessions.reduce((a,s)=>(s.items||[]).reduce((b,e)=>b+(Array.isArray(e.sets)?e.sets.length:0),0)+a,0);
   const thisWeekStart=new Date(now);thisWeekStart.setDate(now.getDate()-now.getDay());
   const weekSessions=fitSessions.filter(s=>{if(!s.date)return false;return new Date(s.date)>=thisWeekStart;}).length;
   // Personal bests per exercise
   const pbs={};
-  fitSessions.forEach(s=>(s.items||[]).forEach(item=>{
-    item.sets.forEach(set=>{
-      if(!pbs[item.exId]||set.weightKg>pbs[item.exId].weightKg)
-        pbs[item.exId]={weightKg:set.weightKg,unit:set.unit,exName:item.name,reps:set.reps};
+  liftSessions.forEach(s=>(s.items||[]).forEach(item=>{
+    (item.sets||[]).forEach(set=>{
+      if(set&&typeof set==='object'&&(!pbs[item.exId]||(set.weightKg||0)>pbs[item.exId].weightKg))
+        pbs[item.exId]={weightKg:set.weightKg||0,unit:set.unit||'kg',exName:item.name,reps:set.reps||0};
     });
   }));
   const pbRows=Object.values(pbs).sort((a,b)=>b.weightKg-a.weightKg).slice(0,8)
     .map(p=>`<div class="fit-pb-row"><span class="fit-pb-name">${esc(p.exName)}</span><span class="fit-pb-val">${fitFmtWeight(p.weightKg,p.unit)} × ${p.reps}</span></div>`).join('');
   // Top exercises by set count
   const setCounts={};
-  fitSessions.forEach(s=>(s.items||[]).forEach(item=>{
+  liftSessions.forEach(s=>(s.items||[]).forEach(item=>{
     if(!setCounts[item.exId])setCounts[item.exId]={name:item.name,count:0};
-    setCounts[item.exId].count+=item.sets.length;
+    setCounts[item.exId].count+=(item.sets||[]).length;
   }));
   const topEx=Object.values(setCounts).sort((a,b)=>b.count-a.count).slice(0,5);
   const maxCount=topEx.length?topEx[0].count:1;
@@ -4900,6 +5404,38 @@ function rFitDash(){
     <div class="fit-bar-track"><div class="fit-bar-fill" style="width:${Math.round(e.count/maxCount*100)}%;"></div></div>
     <div class="fit-bar-count">${e.count}</div>
   </div>`).join('');
+  // Running / cardio stats
+  const allRunIntervals=cardioSessions.flatMap(s=>(s.intervals||[]).filter(iv=>iv.type==='run'));
+  const totalRunKm=allRunIntervals.reduce((a,iv)=>a+(iv.distanceKm||0),0);
+  const longestRunKm=cardioSessions.reduce((best,s)=>{
+    const cont=(s.intervals||[]).filter(iv=>iv.type==='run').reduce((a,iv)=>a+(iv.distanceKm||0),0);
+    return cont>best?cont:best;
+  },0);
+  // Weekly km last 6 weeks
+  const weeklyKm=[];
+  for(let w=5;w>=0;w--){
+    const wStart=new Date(now);wStart.setDate(now.getDate()-now.getDay()-w*7);
+    const wEnd=new Date(wStart);wEnd.setDate(wStart.getDate()+7);
+    const km=cardioSessions.filter(s=>s.date&&new Date(s.date)>=wStart&&new Date(s.date)<wEnd)
+      .reduce((a,s)=>a+(s.intervals||[]).reduce((b,iv)=>b+(iv.distanceKm||0),0),0);
+    weeklyKm.push({km:Math.round(km*10)/10,lbl:wStart.toLocaleDateString('en',{month:'short',day:'numeric'})});
+  }
+  const maxKm=Math.max(...weeklyKm.map(x=>x.km),1);
+  const kmBars=weeklyKm.map(w=>`<div class="fit-km-bar-wrap">
+    <div class="fit-km-bar" style="height:${Math.max(2,Math.round(w.km/maxKm*56))}px;" title="${w.km} km"></div>
+    <div class="fit-km-lbl">${w.lbl.split(' ')[0]}</div>
+  </div>`).join('');
+  // 5K pace progress (last 8 cardio sessions best run pace)
+  const paceData=cardioSessions.slice(-8).map(s=>{
+    const runs=(s.intervals||[]).filter(iv=>iv.type==='run'&&iv.distanceKm>0&&iv.durationSec>0);
+    if(!runs.length)return null;
+    const km=runs.reduce((a,iv)=>a+iv.distanceKm,0);
+    const sec=runs.reduce((a,iv)=>a+iv.durationSec,0);
+    return{date:s.date,paceMin:Math.round(sec/60/km*10)/10};
+  }).filter(Boolean);
+  const bestPace=paceData.length?Math.min(...paceData.map(p=>p.paceMin)):null;
+  const targetPace=6.0; // min/km for 30-min 5K
+  const paceProgress=bestPace?Math.min(100,Math.round((targetPace/bestPace)*100)):0;
 
   el.innerHTML=`<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:1rem;">Dashboard</div>
   <div class="fit-dash-grid">
@@ -4911,6 +5447,26 @@ function rFitDash(){
   <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
     <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">Last 28 days</div>
     <div class="fit-dot-grid">${dots.join('')}</div>
+  </div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:500;color:var(--text);">🏃 Running — 5K Goal</div>
+      <div style="font-size:11px;color:var(--text-faint);">Target: 6:00/km</div>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
+      <div><div style="font-size:20px;font-weight:600;color:var(--accent);">${Math.round(totalRunKm*10)/10} km</div><div style="font-size:11px;color:var(--text-faint);">Total run distance</div></div>
+      <div><div style="font-size:20px;font-weight:600;color:var(--accent);">${Math.round(longestRunKm*100)/100} km</div><div style="font-size:11px;color:var(--text-faint);">Longest run</div></div>
+      ${bestPace?`<div><div style="font-size:20px;font-weight:600;color:var(--accent);">${bestPace}</div><div style="font-size:11px;color:var(--text-faint);">Best min/km</div></div>`:''}
+    </div>
+    ${bestPace?`<div style="margin-bottom:6px;font-size:12px;color:var(--text-muted);">Progress to 5K pace (${paceProgress}%)</div>
+    <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:4px;">
+      <div style="height:100%;width:${paceProgress}%;background:${paceProgress>=100?'#2D5A3D':'var(--accent)'};border-radius:4px;transition:width .4s;"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text-faint);">${paceProgress>=100?'🎉 5K pace goal reached!':bestPace<=7?'Getting close — keep pushing!':'Build more base fitness'}</div>`:'<div style="font-size:12px;color:var(--text-faint);">Log your first run to start tracking pace progress.</div>'}
+    <div style="margin-top:12px;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Weekly km (last 6 weeks)</div>
+      <div class="fit-km-chart">${kmBars}</div>
+    </div>
   </div>
   ${topEx.length?`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
     <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:10px;">Top exercises (by sets)</div>
@@ -4971,12 +5527,29 @@ function applyData(d){
     fitExercises=d.fitExercises.map(e=>{
       if(!e.muscles){e.muscles=e.muscle?[e.muscle]:[];delete e.muscle;}
       if(!e.youtube)e.youtube='';
+      // Seed progressive overload fields if missing
+      if(!e.repRange){const m=(e.muscles||[])[0]||'Other';e.repRange=FIT_REP_RANGES[m]||{min:8,max:12};}
+      if(e.targetReps===undefined)e.targetReps=e.repRange.min;
+      if(e.targetWeight===undefined)e.targetWeight=0;
+      if(e.targetWeightUnit===undefined)e.targetWeightUnit='lbs';
+      if(e.weightIncrement===undefined)e.weightIncrement=FIT_WEIGHT_INCREMENT_KG;
+      if(e.consecutiveMaxReps===undefined)e.consecutiveMaxReps=0;
       return e;
     });
   } else {
-    fitExercises=FIT_DEFAULT_EXERCISES.map(e=>({...e}));
+    fitExercises=FIT_DEFAULT_EXERCISES.map(e=>{
+      const m=(e.muscles||[])[0]||'Other';
+      const rr=FIT_REP_RANGES[m]||{min:8,max:12};
+      return{...e,repRange:rr,targetReps:rr.min,targetWeight:0,targetWeightUnit:'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0};
+    });
   }
-  if(d.fitGroups)fitGroups=d.fitGroups;
+  if(d.fitGroups&&d.fitGroups.length){
+    fitGroups=d.fitGroups;
+    // Merge any default groups not already present by id
+    FIT_DEFAULT_GROUPS.forEach(dg=>{if(!fitGroups.find(g=>g.id===dg.id))fitGroups.unshift({...dg});});
+  } else {
+    fitGroups=FIT_DEFAULT_GROUPS.map(g=>({...g,exerciseIds:[...g.exerciseIds]}));
+  }
   if(d.fitSchedule)fitSchedule=d.fitSchedule;
   if(d.fitSessions)fitSessions=d.fitSessions;
   if(d.fitActiveSession!==undefined){
