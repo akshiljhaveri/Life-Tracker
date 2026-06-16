@@ -3089,10 +3089,10 @@ function rMuscleSkeleton(){
     ?`<div class="skel-legend">${activeMs.map(([m,s])=>{const mc=FIT_MUSCLE_COLORS[m]||FIT_MUSCLE_COLORS['Other'];const op=skelOpacity(s);return`<span class="skel-legend-item" style="background:${mc.bg};color:${mc.c};">${esc(m)}: ${s} set${s!==1?'s':''}</span>`;}).join('')}</div>`
     :`<div style="font-size:12px;color:var(--text-faint);margin-top:8px;">No workout sessions in the last 7 days.</div>`;
 
-  el.innerHTML=`<div class="skel-wrap">
-    <img class="skel-img" src="${MUSCLE_IMG_B64}" alt="Muscle diagram">
+  el.innerHTML=`<div style="max-width:280px;margin:0 auto;"><div class="skel-wrap">
+    <img class="skel-img" src="${MUSCLE_IMG_B64}" alt="Muscle diagram" style="max-width:280px;width:100%;height:auto;">
     <div class="skel-overlay-layer">${overlayHTML}</div>
-  </div>
+  </div></div>
   <div id="skel-tip" class="skel-tip" style="display:none;"></div>
   ${legendHTML}`;
 }
