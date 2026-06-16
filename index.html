@@ -1950,6 +1950,7 @@ function aC(){return[{id:'all',label:'All',color:'#6B6860',bg:'#F0EDE7'},...uCat
 function cat(id){return aC().find(c=>c.id===id)||uCats[0]||DC[0];}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function td(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _ldStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function tm(){const d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dbc(due){if(!due)return'';if(due<td())return'ov';if(due<=tm())return'ds';return'';}
 function fDue(due){if(!due)return'';if(due===td())return'Today';if(due===tm())return'Tomorrow';const d=new Date(due+'T00:00:00');const l=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});return due<td()?'Overdue · '+l:l;}
@@ -4450,8 +4451,8 @@ function rFitSchedule(){
   const simHistory={};
   const days7=[];
   for(let i=0;i<7;i++){
-    const d=new Date(Date.now()+i*86400000).toISOString().slice(0,10);
-    const dayIdx=new Date(d+'T12:00:00').getDay();
+    const _dd=new Date();_dd.setDate(_dd.getDate()+i);const d=_ldStr(_dd);
+    const dayIdx=_dd.getDay();
     const dayName=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][dayIdx===0?6:dayIdx-1];
     const manualSched=fitSchedule?.[d];
     let rec;
@@ -4906,8 +4907,8 @@ function fitRenderScheduleWeek(){
   const todayStr=td();
   let html=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Next 7 days — tap Edit to plan or modify</div>`;
   for(let i=0;i<7;i++){
-    const d=new Date(Date.now()+i*86400000);
-    const dateStr=d.toISOString().slice(0,10);
+    const d=new Date();d.setDate(d.getDate()+i);
+    const dateStr=_ldStr(d);
     const isToday=dateStr===todayStr;
     const dayName=d.toLocaleDateString('en-GB',{weekday:'long'});
     const dateLabel=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
@@ -6250,7 +6251,7 @@ function fitGetRecommendation(dateStr,simHistory){
   // Consecutive training streak before dateStr (uses simHistory for future-day chaining)
   let streak=0;
   for(let i=1;i<=7;i++){
-    const d=new Date(dateMs-i*msPerDay).toISOString().slice(0,10);
+    const _ds=new Date(dateMs-i*msPerDay);const d=_ldStr(_ds);
     const trained=fitSessions.some(s=>s.date===d&&(s.type==='lifting'||s.type==='cardio'||s.type==='run'));
     const simTrained=simHistory&&Object.values(simHistory).some(v=>v===d);
     if(trained||simTrained)streak++;else break;
@@ -6601,14 +6602,14 @@ function applyData(d){
         if(!fitSchedule[dn]||!fitSchedule[dn].length)return;
         const daysAhead=(dow-_todayDow+7)%7;
         const dd=new Date(_now);dd.setDate(_now.getDate()+daysAhead);
-        const dk=dd.toISOString().slice(0,10);
+        const dk=_ldStr(dd);
         if(!fitSchedule[dk])fitSchedule[dk]=[];
         fitSchedule[dk].push(...fitSchedule[dn]);
         delete fitSchedule[dn];
       });
     }
     // Remove past dates
-    const _todayStr=new Date().toISOString().slice(0,10);
+    const _todayStr=td();
     Object.keys(fitSchedule).forEach(k=>{if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&k<_todayStr)delete fitSchedule[k];});
   }
   if(d.fitSessions)fitSessions=d.fitSessions;
