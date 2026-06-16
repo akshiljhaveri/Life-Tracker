@@ -1118,6 +1118,17 @@ details>summary::marker{display:none;}
   </div>
 </div>
 
+<!-- EXERCISE DETAIL MODAL (history + form guide) -->
+<div class="mo" id="fit-ex-detail-modal" onclick="if(event.target===this)closeM('fit-ex-detail-modal')">
+  <div class="modal" style="max-width:460px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div id="fit-ex-detail-title" style="font-family:'Fraunces',serif;font-size:18px;font-weight:400;"></div>
+      <button onclick="closeM('fit-ex-detail-modal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-muted);line-height:1;">×</button>
+    </div>
+    <div id="fit-ex-detail-body"></div>
+  </div>
+</div>
+
 <!-- LIBRARY PICKER MODAL (multi-select, callback) -->
 <div class="mo" id="fit-lib-picker-modal" style="z-index:1100;">
   <div class="modal">
@@ -1883,6 +1894,89 @@ const FIT_DEFAULT_EXERCISES=[
   {id:'dex_79',name:'Elliptical',muscles:['Cardio','Quads','Hamstrings'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=elliptical+form+tutorial'},
   {id:'dex_80',name:'Battle Ropes',muscles:['Cardio','Front Delt','Traps','Biceps'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=battle+ropes+form+tutorial'},
 ];
+
+const FIT_FORM_GUIDES={
+  dex_1:['Lie flat, feet on floor, shoulder blades retracted and squeezed together.','Grip slightly wider than shoulder-width, wrists stacked over elbows.','Lower bar to mid-chest with control, elbows at ~45° from body.','Drive through feet and press to lockout — bar travels in a slight arc.','Avoid: flaring elbows wide or bouncing bar off chest.'],
+  dex_2:['Hold DBs at chest, palms facing forward, slight arch in lower back.','Lower with control, elbows at 45° — greater ROM than barbell.','Press to full extension without locking elbows hard.','Each arm moves independently — good for fixing imbalances.','Avoid: letting DBs crash together at top or dropping too fast.'],
+  dex_3:['Adjust seat so handles align with mid-chest when seated.','Drive handles forward to near-lockout, squeeze chest at end.','Control the return — don\'t let the weight stack crash.','Good for learning pressing pattern safely with guided movement.','Avoid: hunching shoulders forward or using too wide a grip.'],
+  dex_4:['Set bench to 30–45°. Bar touches upper chest, not neck.','Same grip as flat bench — slightly wider than shoulder-width.','Lower with control; incline means shorter range than flat.','Press to lockout, feel upper pec engagement.','Avoid: setting incline too high (becomes a shoulder press).'],
+  dex_5:['Set bench 30–45°. Lower DBs to upper chest level.','Press to top without fully locking elbows — keep tension.','Allows deeper stretch than barbell at the bottom.','Keep shoulder blades pinched together throughout.','Avoid: letting elbows flare too wide on the descent.'],
+  dex_6:['Slight fixed bend in elbows throughout — never straighten or fully bend.','Lower in an arc, feel the chest stretch at the bottom.','Squeeze pecs to bring arms back — imagine hugging a tree.','Light weight, focus on the stretch and squeeze, not load.','Avoid: bending elbows more as the weight gets heavier.'],
+  dex_7:['Stand between cables, slight forward lean at hips.','Arms slightly bent, fixed. Bring handles together in arc motion.','Cable maintains tension at bottom unlike dumbbells.','Squeeze chest for 1 second at the end of each rep.','Avoid: letting cables pull arms too far back — control the stretch.'],
+  dex_8:['Adjust seat so arms are parallel to floor, elbows aligned with pads.','Place forearms on pads, not hands. Squeeze arms together.','Hold contraction briefly at the end, feel the pec squeeze.','Control the return stretch — don\'t let it yank your shoulders.','Avoid: shrugging shoulders up during the movement.'],
+  dex_9:['Hands slightly wider than shoulders, body in a straight line head to heels.','Lower until chest nearly touches floor, elbows at ~45°.','Push back to start — core tight, hips don\'t sag or rise.','Elevate hands to make easier; elevate feet to make harder.','Avoid: letting hips drop or head drooping forward.'],
+  dex_10:['Lean slightly forward — this shifts focus to chest over triceps.','Lower until shoulders are below elbow level.','Press back up to full arm extension at top.','More forward lean = more chest; upright = more triceps.','Avoid: flaring elbows too wide or shrugging at the top.'],
+  dex_11:['Bar over mid-foot, hip-width stance. Hinge at hips, straight arms on bar.','Chest up, neutral spine. Push the floor away — don\'t think "pull".','Bar stays close to shins and thighs throughout the lift.','Lock hips and knees simultaneously at the top.','Avoid: rounding lower back or jerking the bar off the floor.'],
+  dex_12:['One hand and knee supported on bench. Back flat and parallel to floor.','Pull DB to hip — not to shoulder. Elbow stays close to body.','Full stretch at the bottom — let shoulder blade protract.','Squeeze lat at top. Each rep starts from a full hang.','Avoid: rotating the torso or pulling with the bicep only.'],
+  dex_13:['Hip hinge with back roughly parallel to floor, soft knee bend.','Overhand grip slightly wider than shoulder-width.','Row bar to lower chest/upper abdomen, squeeze shoulder blades.','Lower with control — full extension at the bottom.','Avoid: using back momentum or swinging the torso.'],
+  dex_14:['Sit tall with slight forward lean at hips, not rounding back.','Pull handle to midsection, elbows close to body throughout.','Squeeze shoulder blades together at the end position.','Return with control while keeping torso upright.','Avoid: leaning back heavily to pull the weight.'],
+  dex_15:['Sit with thighs under pads, slight lean back (not upright).','Wide overhand grip. Pull bar to upper chest, lead with elbows.','Squeeze lats at bottom, feel the stretch at full extension.','Control the return — don\'t let the bar yank you up.','Avoid: pulling to the neck or swinging the torso excessively.'],
+  dex_16:['Overhand grip, hands slightly wider than shoulders. Dead hang to start.','Drive elbows down and back to pull chest toward bar.','Full range — chin clears bar at top, full hang at bottom.','Lower slowly — the negative builds more strength than the pull.','Avoid: kipping or swinging; use assistance bands if needed.'],
+  dex_17:['Straddle the bar, hip hinge position, back flat.','Both hands on the V-handle. Row toward lower chest.','Elbows stay close to body, squeeze shoulder blades at top.','Lower with control, feel lat stretch at full extension.','Avoid: rounding the back or jerking with the lower body.'],
+  dex_18:['Set cable at upper-chest height. Grab rope with thumbs pointing back.','Pull to face height, flaring elbows out and UP at the end.','Externally rotate shoulders — hands end up beside ears.','This is the most important movement for shoulder health.','Avoid: pulling to chin with elbows down — that misses rear delts.'],
+  dex_19:['Adjust chest pad and seat height so arms can fully extend.','Row to sides of torso, elbows close to body.','Squeeze shoulder blades at the end of each rep.','Machine guides the path — focus on feeling the back muscles.','Avoid: using too much weight and losing back engagement.'],
+  dex_20:['Hips at the pad edge, feet anchored securely in footpads.','Arms across chest or hold weight at chest level.','Hinge down slowly to feel the lower back stretch.','Rise to neutral spine — stop when body is horizontal, not hyperextended.','Avoid: rounding the back down or swinging up fast.'],
+  dex_21:['Stand or sit, bar resting on upper chest/collarbone, grip just outside shoulders.','Press overhead to full lockout — bar moves slightly back as it passes face.','Lower to collarbone level — don\'t partial rep.','Brace core hard throughout to protect lower back.','Avoid: excessive lower back arch or pressing in front of the face.'],
+  dex_22:['Hold DBs at shoulder height, palms facing forward.','Press overhead until DBs nearly touch, arms fully extended.','Lower to shoulder height — full range of motion.','Keep core braced, especially when seated.','Avoid: leaning back excessively or pressing asymmetrically.'],
+  dex_23:['Adjust seat so handles start at shoulder height.','Press to near-lockout, control descent back to start.','Machine is forgiving on form — good for learning the pattern.','Focus on feeling the front delts, not just moving the handles.','Avoid: shrugging shoulders up during the press.'],
+  dex_24:['Stand tall, slight forward lean at hips — this is key for form.','Arms slightly bent (fixed). Raise to shoulder height only, no higher.','Pinky slightly higher than thumb at the top.','Lower slowly — the descent is where most people rush.','Avoid: shrugging, swinging, or raising above shoulder height.'],
+  dex_25:['Set cable at lowest position, stand to the side of the cable.','Reach across with the far hand, raise to shoulder height in an arc.','More constant tension than DBs throughout the range.','Keep the slight forward lean and fixed elbow bend.','Avoid: letting the cable pull your arm across your body.'],
+  dex_26:['Stand with DBs at thighs, slight bend in elbows.','Raise one or both to shoulder height, palms facing down.','Control the descent — don\'t let gravity do the work.','Front delts are strong — don\'t neglect them but also don\'t over-train.','Avoid: swinging or using momentum from the hips.'],
+  dex_27:['Bend forward 45–90° at the hips, arms hanging down.','Slight fixed bend in elbows. Raise to sides in an arc.','Lead with the elbows, not the hands. Squeeze rear delts at top.','Very light weight — rear delts are small, easy to overshoot.','Avoid: shrugging or using upper trap momentum.'],
+  dex_28:['Start with palms facing you at chin height.','Press up while rotating palms outward — finish palms facing away.','Reverse the rotation on the descent back to start.','Hits front, side, and rear delts in one movement.','Avoid: rushing the rotation — the rotation IS the point.'],
+  dex_29:['Set cables at chest height, stand in the middle facing the stack.','Grab opposite handles (cross-cable setup), arms slightly bent.','Pull to sides simultaneously, squeeze rear delts.','Cable provides constant tension unlike free weights.','Avoid: pulling with straight arms — slight bend reduces elbow stress.'],
+  dex_30:['Stand tall, elbows pinned at sides throughout.','Underhand grip shoulder-width. Curl to chin level.','Squeeze bicep hard at the top for 1 second.','Lower fully — full extension is critical for growth.','Avoid: swinging the torso or letting elbows drift forward.'],
+  dex_31:['Same mechanics as barbell but each arm is independent.','Supinate (rotate palm up) during the curl for better bicep activation.','Can alternate arms or curl both simultaneously.','Control the eccentric (lowering) phase — this builds more muscle.','Avoid: swinging or letting the elbow drift away from the body.'],
+  dex_32:['Arm fully supported on the angled pad — removes all cheating.','Full extension at the bottom is important — don\'t cut the range.','Curl to near chin height. Squeeze at top.','Machine provides consistent resistance through full ROM.','Avoid: lifting elbow off the pad or using body momentum.'],
+  dex_33:['Neutral grip (thumbs pointing up) throughout the movement.','Curl to shoulder height, elbows fixed at sides.','Targets brachialis (under bicep) and brachioradialis — adds arm thickness.','Can do alternating or simultaneous.','Avoid: rotating the wrist into supination — keep thumbs up.'],
+  dex_34:['Set cable at lowest position. Stand back slightly for better angle.','Curl to chin height, elbows fixed at sides.','Cable maintains tension at the bottom unlike free weights.','Great finishing exercise after heavy free weight curls.','Avoid: pulling the cable too far down before starting.'],
+  dex_35:['Sit at bench edge, elbow on inner thigh for full support.','Curl DB to shoulder. Squeeze at top for 1 second.','Very isolated movement — removes all cheating.','Perfect for building the muscle-mind connection in biceps.','Avoid: moving the elbow off the thigh support.'],
+  dex_36:['Set bench to 60–70°. Arms hang straight down in full stretch position.','The extended starting position increases bicep stretch.','Curl naturally — don\'t let elbows drift forward.','Increased stretch means increased growth stimulus.','Avoid: swinging or raising the torso off the bench.'],
+  dex_37:['Arms rest on the angled preacher pad, can\'t cheat.','Lower fully to full extension — the stretch matters here.','Curl to near chin, squeeze. Lower slowly.','EZ bar is easier on wrists than straight bar.','Avoid: hyperextending elbows at the bottom under load.'],
+  dex_38:['Lie flat, bar over chest. Upper arms vertical, perpendicular to floor.','Lower bar toward forehead by bending elbows only.','Upper arms stay stationary throughout — only forearms move.','Press back to start. EZ bar is gentler on wrists.','Avoid: letting upper arms drift back or forward.'],
+  dex_39:['Stand or sit. Hold one DB with both hands, thumbs wrapped around handle.','Lower DB behind head, elbows pointing up and in.','Press back to start — full extension at top.','Long head of tricep gets maximum stretch in this position.','Avoid: elbows flaring out wide or arching lower back excessively.'],
+  dex_40:['Cable at top. Use rope or straight bar. Stand back slightly.','Elbows pinned to sides throughout — this is the key cue.','Push down to full extension — squeeze triceps at bottom.','Control the return to about 90° angle.','Avoid: letting elbows drift forward or leaning over the cable.'],
+  dex_41:['Adjust seat so elbows align with the machine\'s pivot point.','Push handles down to full lockout. Squeeze triceps.','Control the return — resist the weight on the way up.','Machine guides the movement — focus on the muscle contraction.','Avoid: leaning forward or using bodyweight to push the handles.'],
+  dex_42:['Hands shoulder-width or slightly narrower on the bar.','Elbows tuck close to body on descent — key for tricep emphasis.','Lower bar to lower sternum. Pause briefly.','Press back to full lockout.','Avoid: flaring elbows out wide (shifts load to chest).'],
+  dex_43:['Hands on bars, body upright to emphasise triceps.','Lower until upper arms are roughly parallel to floor.','Press back to full arm extension at top.','More forward lean = chest; upright = triceps.','Avoid: shrugging shoulders up or partial range of motion.'],
+  dex_44:['Cable at lowest position, face away from the stack.','Hold rope overhead, elbows pointing forward and up.','Extend from behind head to arms fully straight overhead.','Full stretch of the long head (largest part of tricep).','Avoid: flaring elbows out or bending at the hips.'],
+  dex_45:['Bar on upper traps (not neck). Feet shoulder-width, toes slightly out.','Squat to parallel or below, knees tracking over toes.','Chest up, neutral spine. Drive through heels to stand.','Brace core hard before every rep.','Avoid: knees caving in or lower back rounding at depth.'],
+  dex_46:['Hold one DB at chest with both hands (goblet position).','Feet shoulder-width or slightly wider, toes out.','Squat deep — elbows should pass inside the knees.','Great learning tool for the squat pattern, chest stays upright.','Avoid: heels rising or torso collapsing forward.'],
+  dex_47:['Feet shoulder-width on the platform, midfoot to upper half.','Lower until 90° knee angle — don\'t let lower back peel off pad.','Press to near lockout — don\'t fully lock knees.','Higher foot placement = more glutes; lower = more quads.','Avoid: knees caving in or letting the platform come too far down.'],
+  dex_48:['Adjust pad so it sits just above the ankle, not on foot.','Extend to full lockout — feel the quad squeeze at top.','Hold the lockout for 1 second on each rep.','Lower with control — the eccentric matters here.','Avoid: using momentum or lifting hips off the seat.'],
+  dex_49:['Shoulders and back flat against the pad throughout.','Feet in front of the body on the platform, shoulder-width.','Lower until thighs are parallel or below. Drive through heels.','Machine removes balance — focus purely on leg drive and depth.','Avoid: lower back coming off the pad at the bottom.'],
+  dex_50:['Bar on upper traps. Step forward into lunge position.','Back knee descends toward floor without touching.','Push through the front foot to return to standing.','Keep torso upright — don\'t lean forward.','Avoid: front knee caving inward or step being too short.'],
+  dex_51:['Hold DBs at sides. Step forward or take a reverse step.','Lower back knee toward floor, front shin stays vertical.','Push through front foot to return. Alternate legs.','Easier to balance than barbell. Full range of motion.','Avoid: letting front knee drift past the toes or torso leaning.'],
+  dex_52:['Rear foot on bench, front foot far enough forward for balance.','Lower back knee straight down toward the floor.','Drive through front foot and glute to stand.','Brutally effective — hardest single-leg quad exercise.','Avoid: rear foot too close (causes forward lean) or front knee caving.'],
+  dex_53:['Bar guided on track, feet can be positioned slightly in front.','Slightly wider stance is comfortable for most people.','Full range of motion — parallel or below.','Use for form practice or heavy work without a spotter.','Avoid: overrelying on the machine — it doesn\'t replicate free squat exactly.'],
+  dex_54:['Stand holding bar, hip-width stance, soft knee bend.','Push hips back — this is a HINGE, not a squat.','Bar slides down the legs. Lower until hamstring stretch is felt.','Drive hips forward to stand. Squeeze glutes at top.','Avoid: rounding the back, bending the knees too much, or looking up.'],
+  dex_55:['Hold DBs in front. Same hip hinge pattern as barbell RDL.','Can go slightly deeper due to DBs moving around legs.','Keep DBs close to shins on the way down.','Single leg version is excellent but very demanding.','Avoid: rounding the back or squatting instead of hinging.'],
+  dex_56:['Lie face down, adjust pad to sit just above the ankles.','Curl heels toward glutes. Hold briefly at the top.','Lower with control — don\'t just drop the weight.','Adjust the seat/pad carefully for your body before starting.','Avoid: lifting hips off the pad or using momentum.'],
+  dex_57:['Kneel with ankles anchored under a bar or by a partner.','Fall forward slowly, using hamstrings as the brake.','Lower as far as you can control. Catch yourself with hands.','Push back up with hands; the negative is the actual work.','Avoid: going too fast — control the descent completely.'],
+  dex_58:['Balls of feet on edge of platform, heels hanging.','Rise to full tiptoe — pause at top for 1 second.','Lower into full stretch below platform level — don\'t skip this.','Full range of motion is essential; partial reps don\'t build calves.','Avoid: bouncing at the bottom or skipping the full stretch.'],
+  dex_59:['Seated position with pad on lower quads, balls of feet on platform.','Rise fully and lower fully — same ROM principles as standing.','Seated position specifically targets soleus (deeper calf muscle).','Combine with standing raises for complete calf development.','Avoid: lifting the pad off your legs or bouncing.'],
+  dex_60:['Stand holding DBs at sides. Balls of feet on a step or plate.','Rise to full tiptoe. Lower to full stretch.','Single leg version doubles the load and improves balance.','Slow and controlled — calves respond well to time under tension.','Avoid: swinging the DBs or using momentum.'],
+  dex_61:['Shoulders against bench edge, bar across hips (use foam pad).','Feet flat on floor, shins vertical when hips are extended.','Drive hips up to horizontal — squeeze glutes hard at top.','Don\'t extend too far — horizontal is the goal, not hyperextension.','Avoid: bar rolling without a pad or bar being too high on the hips.'],
+  dex_62:['Adjust machine pad to sit across the hips comfortably.','Drive hips up to full extension. Squeeze glutes.','Control the return — don\'t let the machine pull hips down.','Easier setup than barbell — good for progressive overload tracking.','Avoid: extending beyond horizontal or using the lower back.'],
+  dex_63:['Attach ankle cuff to cable at lowest setting.','Face the machine, slight forward lean, one hand on machine for balance.','Drive leg back and up, squeezing glute at top.','Control the return — don\'t let cable swing leg forward.','Avoid: swinging the leg using hip flexors instead of glutes.'],
+  dex_64:['Wide stance, toes angled out 30–45°. Grip is inside the legs.','Hips start closer to the floor than conventional deadlift.','Drive knees out and hips forward simultaneously.','More glutes and inner thighs than conventional stance.','Avoid: knees caving in or rounding the lower back.'],
+  dex_65:['Face away from cable, rope attachment through legs.','Hip hinge forward, rope going back between legs.','Drive hips forward powerfully to stand upright.','Squeeze glutes hard at the top of each rep.','Avoid: squatting instead of hinging or bending the arms.'],
+  dex_66:['Lie on back, knees bent, feet flat. Hands behind head or on chest.','Curl shoulders off the floor — it\'s a SHORT movement, not a full sit-up.','Focus on contracting the abs, not pulling the neck forward.','Hold at the top briefly. Lower with control.','Avoid: pulling neck with hands or using momentum.'],
+  dex_67:['Kneel facing the cable stack. Rope at face height.','Hinge from the hips, crunching elbows toward knees.','Resist the cable on the return — slow is better.','Weighted abs respond to progressive overload just like other muscles.','Avoid: pulling with the arms or moving the hips.'],
+  dex_68:['Forearms and toes on floor, elbows under shoulders.','Body in a straight line — don\'t let hips sag or rise.','Brace core as if bracing for a punch.','Breathe normally — holding breath causes blood pressure spike.','Avoid: looking up or letting hips drop first when fatiguing.'],
+  dex_69:['Hang from bar with straight arms, full dead hang.','Raise legs to 90° (or higher for more difficulty).','Lower with control — don\'t just drop legs.','Bent knees is easier; straight legs is harder.','Avoid: swinging or using momentum to get legs up.'],
+  dex_70:['Kneel with hands on the wheel, arms straight.','Roll forward, extending body — back stays flat (not arched).','Pull back using the abs — this is the hard part.','Start with small range and increase as strength improves.','Avoid: letting the hips drop or lower back arch.'],
+  dex_71:['Sit with knees bent, lean back slightly to engage abs.','Rotate torso side to side, touching floor (or near it) beside hip.','Keep feet off the floor for more difficulty.','Add a medicine ball or weight when bodyweight becomes easy.','Avoid: moving arms instead of rotating the torso.'],
+  dex_72:['Feet hooked at the top of the decline bench.','Lower back slowly — full range toward horizontal.','Rise to upright position. Cross arms on chest or extend overhead.','Add weight when bodyweight becomes comfortable.','Avoid: pulling neck or using momentum to sit up.'],
+  dex_73:['Lie flat on back, arms at sides or holding bench overhead.','Raise legs to 90°, keeping them straight or slightly bent.','Lower slowly — don\'t let legs drop to the floor.','Keep lower back pressed into floor throughout.','Avoid: arching the lower back off the floor.'],
+  dex_74:['Warm up with a 3 min walk before running.','Land midfoot — not heel striking. Cadence around 170–180 steps/min.','Slight forward lean from ankles, not from the waist.','Arms relaxed at 90°, driving forward-back not across the body.','Breathe rhythmically — in for 2 steps, out for 2.'],
+  dex_75:['Drive sequence: Legs → Core lean back → Arms pull. In that order.','Return sequence: Arms forward → Core lean forward → Legs compress.','Ratio: ~60% legs, 20% core, 20% arms.','Keep elbows close to body on the pull. Finish with hands at lower ribs.','Avoid: using arms only or hunching the back at the catch position.'],
+  dex_76:['Adjust seat so knee has slight bend at bottom of pedal stroke.','Moderate resistance — too easy means low benefit.','Consistent cadence around 80–90 RPM.','Upright or slight forward lean. Hands lightly on handlebars.','Avoid: very low resistance spinning or leaning heavily on handlebars.'],
+  dex_77:['Land on balls of feet with slight knee bend — absorb impact.','Small jumps — only need to clear the rope by 1–2 inches.','Wrists do the rotation, not full arm circles.','Start: 30s on / 30s off intervals. Build from there.','Avoid: jumping too high or looking down at the rope.'],
+  dex_78:['Step fully onto each step — don\'t just use the toes.','Don\'t lean on the handles — this reduces the calorie burn significantly.','Steady, consistent pace. Choose resistance to make it challenging.','Great low-impact option for those with knee issues.','Avoid: holding body weight on the handles or taking very rapid shallow steps.'],
+  dex_79:['Push through handles simultaneously for upper body engagement.','Full stride length on each step — don\'t take short choppy steps.','Adjust resistance and incline to maintain effort.','Low impact — good for active recovery days.','Avoid: hanging off the handles or leaning too far forward.'],
+  dex_80:['Stand in slight squat, feet shoulder-width, knees soft.','Create waves with alternating arms or both arms simultaneously.','Core braced — power comes from the hips and core, not just arms.','Work in bursts: 20–30s hard effort, rest, repeat.','Avoid: standing straight or letting the ropes go slack between waves.'],
+};
 
 // STATE
 let tasks=[],sublists={},uCats=[...DC],archive=[],templates=[];
@@ -5411,45 +5505,209 @@ function fitLoadDefaults(){
   save();rFitExercises();showToast(`✅ ${toAdd.length} exercises added!`);
 }
 
-function rFitExercises(){
-  const el=document.getElementById('fit-exercises-panel');
-  const headerBtns=`<div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button class="fit-ghost-btn" onclick="fitLoadDefaults()" style="font-size:12px;">+ Load defaults</button>
-    <button class="fit-pill-btn" onclick="fitOpenNewExercise()">+ New exercise</button>
+function getExerciseHistory(exId){
+  const hist=[];
+  (fitSessions||[]).forEach(s=>{
+    const items=s.items||s.exercises||[];
+    const item=items.find(x=>(x.exId||x.id)===exId);
+    if(!item)return;
+    const sets=(item.sets||[]).filter(s=>s.reps>0);
+    if(!sets.length)return;
+    const bestSet=sets.reduce((a,b)=>(a.weight||0)*a.reps>=(b.weight||0)*b.reps?a:b);
+    const vol=sets.reduce((sum,s)=>sum+(s.weight||0)*s.reps,0);
+    const e1rm=bestSet.weight?Math.round(bestSet.weight*(1+bestSet.reps/30)):0;
+    hist.push({date:s.date,bestW:bestSet.weight||0,bestR:bestSet.reps,vol:Math.round(vol),e1rm,sets,sessionName:s.name||''});
+  });
+  return hist.sort((a,b)=>a.date<b.date?-1:1);
+}
+
+function svgLine(vals,color,unit){
+  if(vals.length<2)return'<div style="font-size:11px;color:var(--text-faint);padding:8px 0;">Log at least 2 sessions to see chart.</div>';
+  const W=300,H=80,PL=36,PR=8,PT=8,PB=16;
+  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+  const cx=i=>PL+(i/(vals.length-1))*(W-PL-PR);
+  const cy=v=>PT+(1-(v-min)/range)*(H-PT-PB);
+  const pts=vals.map((v,i)=>`${cx(i).toFixed(1)},${cy(v).toFixed(1)}`).join(' ');
+  const dots=vals.map((v,i)=>`<circle cx="${cx(i).toFixed(1)}" cy="${cy(v).toFixed(1)}" r="2.5" fill="${color}"/>`).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible;display:block;">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
+    ${dots}
+    <text x="${PL-2}" y="${cy(max).toFixed(1)}" font-size="9" fill="var(--text-faint)" text-anchor="end">${max}${unit}</text>
+    <text x="${PL-2}" y="${(H-PB).toFixed(1)}" font-size="9" fill="var(--text-faint)" text-anchor="end">${min}${unit}</text>
+  </svg>`;
+}
+
+function svgBars(vals,color){
+  if(!vals.length)return'';
+  const W=300,H=70,PAD=4,maxV=Math.max(...vals)||1;
+  const slotW=(W-PAD*2)/vals.length;
+  const bw=Math.max(2,slotW-2);
+  const bars=vals.map((v,i)=>{
+    const x=(PAD+i*slotW).toFixed(1);
+    const bh=Math.max(2,(v/maxV)*(H-PAD*2));
+    const y=(H-PAD-bh).toFixed(1);
+    return`<rect x="${x}" y="${y}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${color}" rx="1.5" opacity=".85"/>`;
+  }).join('');
+  return`<svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible;display:block;">${bars}
+    <text x="0" y="${H}" font-size="9" fill="var(--text-faint)">Vol/session</text>
+    <text x="${W}" y="${H}" font-size="9" fill="var(--text-faint)" text-anchor="end">${Math.round(maxV)} lbs</text>
+  </svg>`;
+}
+
+function fitOpenExerciseDetail(exId){
+  const ex=fitExercises.find(x=>x.id===exId)||FIT_DEFAULT_EXERCISES.find(x=>x.id===exId);
+  if(!ex)return;
+  const hist=getExerciseHistory(exId);
+  const isBW=ex.unit==='bw';
+
+  const bestW=hist.length?Math.max(...hist.map(h=>h.bestW)):0;
+  const bestR=hist.length?Math.max(...hist.map(h=>h.bestR)):0;
+  const bestVol=hist.length?Math.max(...hist.map(h=>h.vol)):0;
+  const totalSessions=hist.length;
+
+  const prRow=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">
+    ${[
+      ['Best weight',bestW?(bestW+'lbs'):'—'],
+      ['Best reps',bestR||'—'],
+      ['Best vol',bestVol?(bestVol+'lbs'):'—'],
+      ['Sessions',totalSessions||'—']
+    ].map(([l,v])=>`<div style="background:var(--surface2);border-radius:8px;padding:8px 6px;text-align:center;">
+      <div style="font-size:14px;font-weight:600;color:var(--accent);">${v}</div>
+      <div style="font-size:9px;color:var(--text-faint);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;">${l}</div>
+    </div>`).join('')}
   </div>`;
-  const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-    <div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;">Exercises</div>
-    <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${fitExercises.length} in library</div></div>
-    ${headerBtns}
-  </div>`;
-  if(!fitExercises.length){
-    el.innerHTML=header+`<div style="font-size:13px;color:var(--text-faint);margin-top:.5rem;">No exercises yet. Load defaults or add your own.</div>`;
-    return;
-  }
-  let html=header;
-  FIT_ALL_MUSCLES.concat(['']).forEach(m=>{
-    // Group by primary muscle (first in array)
-    const list=fitExercises.filter(e=>{
-      const ms=e.muscles||[];
-      return m===''?ms.length===0:ms[0]===m;
-    });
-    if(!list.length)return;
-    const label=m||'Uncategorised';
-    const mc=FIT_MUSCLE_COLORS[m]||FIT_MUSCLE_COLORS['Other'];
-    html+=`<div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:${mc.c};font-weight:600;margin:16px 0 6px;">${esc(label)}</div>`;
-    list.forEach(e=>{
-      const badges=(e.muscles||[]).map(mu=>fitMuscleBadge(mu)).join('');
-      const ytBtn=e.youtube?`<a href="${esc(e.youtube)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 9px;border-radius:var(--rs);background:#FDECEA;color:#C62828;text-decoration:none;border:1px solid rgba(198,40,40,.2);flex-shrink:0;">▶ Tutorial</a>`:'';
-      html+=`<div class="fit-ex-chip" style="margin-bottom:7px;align-items:flex-start;flex-wrap:wrap;gap:6px;">
-        <div style="flex:1;min-width:0;">
-          <div class="fit-ex-chip-name" style="margin-bottom:${badges?'5px':'0'}">${esc(e.name)}</div>
-          ${badges?`<div style="display:flex;flex-wrap:wrap;gap:4px;">${badges}</div>`:''}
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;padding-top:1px;">${ytBtn}<button class="fit-ghost-btn" onclick="fitEditExercise('${e.id}')" style="font-size:11px;padding:4px 8px;">Edit</button></div>
+
+  const wChart=hist.length>=2&&!isBW?`<div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Weight Progression</div>
+    ${svgLine(hist.map(h=>h.bestW),'#2D5A3D','lbs')}
+  </div>`:'';
+
+  const e1rmChart=hist.length>=2&&!isBW?`<div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Estimated 1RM <span style="font-weight:400;font-size:10px;">(Epley formula)</span></div>
+    ${svgLine(hist.map(h=>h.e1rm),'#8E44AD','lbs')}
+  </div>`:'';
+
+  const recent=hist.slice(-8).reverse();
+  const sessTable=recent.length?`<div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Recent Sessions</div>
+    ${recent.map(h=>{
+      const d=new Date(h.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      const best=isBW?`BW × ${h.bestR} reps`:`${h.bestW} lbs × ${h.bestR}`;
+      return`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;gap:8px;">
+        <span style="color:var(--text-muted);white-space:nowrap;">${d}</span>
+        <span style="flex:1;">${best}</span>
+        <span style="color:var(--text-faint);white-space:nowrap;">${h.sets.length}s · ${h.vol}lbs</span>
       </div>`;
+    }).join('')}
+  </div>`:'<div style="font-size:12px;color:var(--text-faint);margin-bottom:14px;">No sessions logged yet.</div>';
+
+  const volChart=hist.length>=2?`<div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Volume per Session</div>
+    ${svgBars(hist.map(h=>h.vol),'#e67e22')}
+  </div>`:'';
+
+  const guide=FIT_FORM_GUIDES[exId];
+  const formHTML=guide?`<details style="margin-bottom:4px;">
+    <summary style="font-size:12px;font-weight:500;color:var(--accent);cursor:pointer;padding:8px 0;user-select:none;">Form guide ▸</summary>
+    <ul style="margin:6px 0 0;padding-left:18px;">
+      ${guide.map(tip=>`<li style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">${esc(tip)}</li>`).join('')}
+    </ul>
+  </details>`:'';
+
+  const muscleTags=(ex.muscles||[]).map(m=>`<span style="font-size:10px;padding:2px 8px;border-radius:8px;background:var(--surface2);margin-right:4px;display:inline-block;margin-bottom:4px;">${esc(m)}</span>`).join('');
+
+  const bodyEl=document.getElementById('fit-ex-detail-body');
+  const titleEl=document.getElementById('fit-ex-detail-title');
+  if(titleEl)titleEl.textContent=ex.name;
+  if(bodyEl)bodyEl.innerHTML=`<div style="margin-bottom:10px;">${muscleTags}</div>${prRow}${wChart}${e1rmChart}${sessTable}${volChart}${formHTML}`;
+  openM('fit-ex-detail-modal');
+}
+
+function fitToggleExerciseActive(exId){
+  const ex=fitExercises.find(x=>x.id===exId);
+  if(!ex)return;
+  ex.active=!ex.active;
+  if(!ex.active)fitReplaceInactiveExercise(exId);
+  save();rFitExercises();
+}
+
+function fitReplaceInactiveExercise(exId){
+  const ex=fitExercises.find(x=>x.id===exId);if(!ex)return;
+  const muscles=ex.muscles||[];
+  const activeExes=fitExercises.filter(x=>x.active!==false&&x.id!==exId);
+
+  function bestReplacement(currentIds){
+    return activeExes
+      .filter(x=>!currentIds.includes(x.id))
+      .map(x=>({x,score:(x.muscles||[]).filter(m=>muscles.includes(m)).length}))
+      .sort((a,b)=>b.score-a.score)
+      .find(r=>r.score>0)?.x||null;
+  }
+
+  let count=0;
+  fitGroups.forEach(g=>{
+    if(!g.exerciseIds.includes(exId))return;
+    const rep=bestReplacement(g.exerciseIds);
+    if(rep){g.exerciseIds=g.exerciseIds.map(id=>id===exId?rep.id:id);count++;}
+    else{g.exerciseIds=g.exerciseIds.filter(id=>id!==exId);}
+  });
+  Object.values(fitSchedule).forEach(entries=>{
+    (entries||[]).forEach(entry=>{
+      if(!entry.exerciseIds||!entry.exerciseIds.includes(exId))return;
+      const rep=bestReplacement(entry.exerciseIds);
+      if(rep){entry.exerciseIds=entry.exerciseIds.map(id=>id===exId?rep.id:id);count++;}
+      else{entry.exerciseIds=entry.exerciseIds.filter(id=>id!==exId);}
     });
   });
-  el.innerHTML=html;
+  if(count)showToast(`${ex.name} deactivated — replaced in ${count} slot${count!==1?'s':''}`);
+  else showToast(`${ex.name} marked inactive`);
+  rFitSchedule();rFitToday();
+}
+
+function rFitExercises(){
+  const el=document.getElementById('fit-exercises-panel');if(!el)return;
+  const search=(document.getElementById('fit-ex-search-inp')?.value||'').toLowerCase().trim();
+  const allEx=[...fitExercises];
+  const activeEx=allEx.filter(ex=>ex.active!==false&&(!search||ex.name.toLowerCase().includes(search)||(ex.muscles||[]).some(m=>m.toLowerCase().includes(search))));
+  const inactiveEx=allEx.filter(ex=>ex.active===false&&(!search||ex.name.toLowerCase().includes(search)||(ex.muscles||[]).some(m=>m.toLowerCase().includes(search))));
+
+  function exCard(ex){
+    const muscles=(ex.muscles||[]).slice(0,3);
+    const mc=FIT_MUSCLE_COLORS[muscles[0]]||FIT_MUSCLE_COLORS['Other'];
+    const isActive=ex.active!==false;
+    const toggleLabel=isActive?'Set inactive':'Set active';
+    const toggleColor=isActive?'#c0392b':'#219150';
+    const badges=muscles.map(m=>`<span style="font-size:10px;padding:1px 7px;border-radius:8px;background:${mc.bg};color:${mc.c};">${esc(m)}</span>`).join('');
+    const ytBtn=ex.youtube?`<a href="${esc(ex.youtube)}" target="_blank" rel="noopener" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);text-decoration:none;color:var(--text-muted);">▶</a>`:'';
+    return`<div class="fit-ex-chip" style="margin-bottom:7px;align-items:flex-start;flex-wrap:wrap;gap:6px;">
+      <div style="flex:1;min-width:0;cursor:pointer;" onclick="fitOpenExerciseDetail('${ex.id}')">
+        <div class="fit-ex-chip-name" style="margin-bottom:${badges?'5px':'0'}">${esc(ex.name)}</div>
+        ${badges?`<div style="display:flex;flex-wrap:wrap;gap:4px;">${badges}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;padding-top:1px;">
+        ${ytBtn}
+        <button class="fit-ghost-btn" onclick="fitEditExercise('${ex.id}')" style="font-size:11px;padding:3px 7px;">Edit</button>
+        <button onclick="fitToggleExerciseActive('${ex.id}')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid ${toggleColor};color:${toggleColor};background:none;cursor:pointer;white-space:nowrap;">${toggleLabel}</button>
+      </div>
+    </div>`;
+  }
+
+  const activeHTML=activeEx.length?activeEx.map(exCard).join(''):`<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No active exercises${search?' matching search':''}.</div>`;
+  const inactiveHTML=inactiveEx.length?inactiveEx.map(exCard).join(''):'';
+
+  el.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;">Exercises</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="fit-ghost-btn" onclick="fitLoadDefaults()" style="font-size:11px;">+ Load defaults</button>
+      <button class="fit-pill-btn" onclick="fitOpenNewExercise()" style="font-size:12px;">+ New</button>
+    </div>
+  </div>
+  <input id="fit-ex-search-inp" type="search" placeholder="Search exercises or muscles…" value="${esc(search)}" oninput="rFitExercises()" style="width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid var(--border-md);background:var(--surface);font-size:13px;margin-bottom:1rem;">
+  <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Active (${activeEx.length})</div>
+  ${activeHTML}
+  ${inactiveEx.length?`<div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px;">Inactive (${inactiveEx.length})</div>
+  <div style="opacity:.7;">${inactiveHTML}</div>`:''}`;
 }
 
 function fitOpenNewExercise(){
@@ -6586,11 +6844,13 @@ function applyData(d){
       if(!ex.sw&&def.sw){ex.sw=def.sw;}
       if(!ex.sr&&def.sr){ex.sr=def.sr;}
     });
+    // Seed active flag
+    fitExercises.forEach(ex=>{if(ex.active===undefined)ex.active=true;});
   } else {
     fitExercises=FIT_DEFAULT_EXERCISES.map(e=>{
       const m=(e.muscles||[])[0]||'Other';
       const rr=FIT_REP_RANGES[m]||{min:8,max:12};
-      return{...e,repRange:rr,targetReps:e.sw||0,targetWeight:e.sw||0,targetWeightUnit:e.unit||'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0,goalWeight:e.gw||0,goalReps:e.gr||rr.min,defaultSets:e.sets||3};
+      return{...e,active:true,repRange:rr,targetReps:e.sw||0,targetWeight:e.sw||0,targetWeightUnit:e.unit||'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0,goalWeight:e.gw||0,goalReps:e.gr||rr.min,defaultSets:e.sets||3};
     });
   }
   if(d.fitGroups&&d.fitGroups.length){
@@ -6649,7 +6909,7 @@ window._hydrateFromFirebase=function(d){
 
 // Called by Firebase module when user has no data yet (first time)
 window._initFreshApp=function(){
-  if(!fitExercises.length){fitExercises=FIT_DEFAULT_EXERCISES.map(e=>{const m=(e.muscles||[])[0]||'Other';const rr=FIT_REP_RANGES[m]||{min:8,max:12};return{...e,repRange:rr,targetReps:e.sw||0,targetWeight:e.sw||0,targetWeightUnit:e.unit||'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0,goalWeight:e.gw||0,goalReps:e.gr||rr.min,defaultSets:e.sets||3};});save();}
+  if(!fitExercises.length){fitExercises=FIT_DEFAULT_EXERCISES.map(e=>{const m=(e.muscles||[])[0]||'Other';const rr=FIT_REP_RANGES[m]||{min:8,max:12};return{...e,active:true,repRange:rr,targetReps:e.sw||0,targetWeight:e.sw||0,targetWeightUnit:e.unit||'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0,goalWeight:e.gw||0,goalReps:e.gr||rr.min,defaultSets:e.sets||3};});save();}
   applySettings();render();
 };
 
