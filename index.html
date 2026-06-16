@@ -4534,7 +4534,7 @@ function fitScheduleDay(dowIdx){
   if(!fitSchedule[dayName])fitSchedule[dayName]=[];
   if(!fitSchedule[dayName].find(x=>x.id===plan.group)){
     fitSchedule[dayName].push({type:'group',id:plan.group});
-    save();showToast(`Scheduled ${plan.label} for ${dayName}s`);rFitSchedule();
+    save();showToast(`Scheduled ${plan.label} for ${dayName}s`);rFitToday();rFitSchedule();
   } else {
     showToast(`Already scheduled for ${dayName}s`);
   }
@@ -4548,7 +4548,7 @@ function fitScheduleRun(dayName){
   fitSchedule[dayName].push({type:'run',planSessionIdx:sessionIdx});
   save();
   showToast(`Run Session ${sessionIdx+1} scheduled for ${dayName}s`);
-  rFitToday();
+  rFitToday();rFitSchedule();
 }
 
 function fitScheduleRecovery(dateStr){
@@ -4561,7 +4561,7 @@ function fitScheduleRecovery(dateStr){
   fitSchedule[dayName].push({type:'recovery',planSessionIdx:sessionIdx});
   save();
   showToast(`Recovery session ${sessionIdx+1} scheduled for ${dayName}s`);
-  rFitToday();
+  rFitToday();rFitSchedule();
 }
 
 function fitRenderScheduleWeek(){
