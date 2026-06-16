@@ -4431,11 +4431,33 @@ function fitSkipFeedback(){
 // ─────────────────────────── SCHEDULE TAB ────────────────────────────────────
 function rFitSchedule(){
   const el=document.getElementById('fit-schedule-panel');
-  // Dynamic 7-day recommendation preview
+  // Dynamic 7-day recommendation preview — chains simHistory so each day accounts for previous day's recommendation
+  const simHistory={};
   const days7=[];
   for(let i=0;i<7;i++){
     const d=new Date(Date.now()+i*86400000).toISOString().slice(0,10);
-    days7.push({date:d,rec:fitGetRecommendation(d)});
+    const dayIdx=new Date(d+'T12:00:00').getDay();
+    const dayName=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][dayIdx===0?6:dayIdx-1];
+    const manualSched=fitSchedule?.[dayName];
+    let rec;
+    if(manualSched&&Array.isArray(manualSched)&&manualSched.length>0){
+      const m=manualSched[0];
+      if(m.type==='run'||m.type==='cardio'){
+        rec={type:'cardio',label:'Run / Cardio (Scheduled)',reason:'Manually scheduled',planSessionIdx:m.planSessionIdx};
+      } else if(m.type==='recovery'){
+        rec={type:'recovery',label:'Active Recovery (Scheduled)',reason:'Manually scheduled',recoveryIdx:m.planSessionIdx};
+      } else if(m.type==='group'&&m.id){
+        const g=fitGroups.find(x=>x.id===m.id);
+        rec={type:'lifting',group:g,label:g?g.name:'Workout',reason:'Manually scheduled'};
+      } else {
+        rec=fitGetRecommendation(d,simHistory);
+      }
+    } else {
+      rec=fitGetRecommendation(d,simHistory);
+    }
+    days7.push({date:d,rec});
+    if(rec.type==='lifting'&&rec.group)simHistory[rec.group.id]=d;
+    else if(rec.type==='cardio'||rec.type==='run')simHistory['__cardio']=d;
   }
   const todayStr=td();
   const planRows=days7.map(({date,rec})=>{
@@ -5799,66 +5821,100 @@ function rFitRunning(){
 }
 
 // ─────────────────────────── SCHEDULE RECOMMENDATION ────────────────────────
-function fitGetRecommendation(dateStr){
+function fitGetRecommendation(dateStr,simHistory){
   if(!dateStr)dateStr=td();
-  const dow=new Date(dateStr+'T12:00:00').getDay(); // 0=Sun
+  const dow=new Date(dateStr+'T12:00:00').getDay();
   if(dow===0)return{type:'rest',label:'Rest Day',reason:'Sunday — full recovery'};
-  const now=Date.now();
+  const dateMs=new Date(dateStr+'T12:00:00').getTime();
   const msPerDay=86400000;
-  // Check consecutive training days up to today
+  const DAY_NAMES=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+  function daysSinceGroup(gid){
+    const sessions=fitSessions.filter(s=>s.groupId===gid&&new Date((s.date||'')+'T12:00:00').getTime()<dateMs);
+    let lastMs=sessions.length?Math.max(...sessions.map(s=>new Date(s.date+'T12:00:00').getTime())):0;
+    if(simHistory&&simHistory[gid]){
+      const simMs=new Date(simHistory[gid]+'T12:00:00').getTime();
+      if(simMs<dateMs&&simMs>lastMs)lastMs=simMs;
+    }
+    for(let back=1;back<=7;back++){
+      const pastMs=dateMs-back*msPerDay;
+      const pastDow=new Date(pastMs).getDay();
+      const pastDayName=DAY_NAMES[pastDow===0?6:pastDow-1];
+      const sched=fitSchedule?.[pastDayName];
+      if(Array.isArray(sched)){
+        const entry=sched.find(x=>x.type==='group'&&x.id===gid);
+        if(entry&&pastMs>lastMs)lastMs=pastMs;
+      }
+    }
+    if(!lastMs)return 999;
+    return Math.round((dateMs-lastMs)/msPerDay);
+  }
+
+  // Consecutive training streak before dateStr (uses simHistory for future-day chaining)
   let streak=0;
   for(let i=1;i<=7;i++){
-    const d=new Date(now-i*msPerDay).toISOString().slice(0,10);
-    const trained=fitSessions.some(s=>s.date===d&&(s.type==='lifting'||s.type==='cardio'));
-    if(trained)streak++;else break;
+    const d=new Date(dateMs-i*msPerDay).toISOString().slice(0,10);
+    const trained=fitSessions.some(s=>s.date===d&&(s.type==='lifting'||s.type==='cardio'||s.type==='run'));
+    const simTrained=simHistory&&Object.values(simHistory).some(v=>v===d);
+    if(trained||simTrained)streak++;else break;
   }
   if(streak>=3)return{type:'rest',label:'Rest Recommended',reason:`${streak} consecutive days — recovery needed`};
-  // Days since each group was last trained
-  const liftGroups=['grp_push_a','grp_pull','grp_legs','grp_push_b','grp_core'];
-  const groupLastTrained={};
-  liftGroups.forEach(gid=>{
-    const sessions=fitSessions.filter(s=>s.groupId===gid);
-    if(!sessions.length){groupLastTrained[gid]=999;}
-    else{
-      const last=Math.max(...sessions.map(s=>new Date(s.date+'T12:00:00').getTime()));
-      groupLastTrained[gid]=Math.round((now-last)/msPerDay);
-    }
-  });
+
   // Days since cardio
-  const cardioSessions=fitSessions.filter(s=>s.type==='cardio'||s.type==='run');
-  const lastCardio=cardioSessions.length?Math.max(...cardioSessions.map(s=>new Date(s.date+'T12:00:00').getTime())):null;
-  const daysSinceCardio=lastCardio?Math.round((now-lastCardio)/msPerDay):999;
-  // Imbalance score per group
+  const cardioSessions=fitSessions.filter(s=>(s.type==='cardio'||s.type==='run')&&new Date((s.date||'')+'T12:00:00').getTime()<dateMs);
+  let lastCardioMs=cardioSessions.length?Math.max(...cardioSessions.map(s=>new Date(s.date+'T12:00:00').getTime())):0;
+  if(simHistory&&simHistory['__cardio']){
+    const simMs=new Date(simHistory['__cardio']+'T12:00:00').getTime();
+    if(simMs<dateMs&&simMs>lastCardioMs)lastCardioMs=simMs;
+  }
+  for(let back=1;back<=7;back++){
+    const pastMs=dateMs-back*msPerDay;
+    const pastDow=new Date(pastMs).getDay();
+    const pastDayName=DAY_NAMES[pastDow===0?6:pastDow-1];
+    const sched=fitSchedule?.[pastDayName];
+    if(Array.isArray(sched)&&sched.some(x=>x.type==='run'||x.type==='cardio')){
+      if(pastMs>lastCardioMs)lastCardioMs=pastMs;
+    }
+  }
+  const daysSinceCardio=lastCardioMs?Math.round((dateMs-lastCardioMs)/msPerDay):999;
+
+  // Imbalance score: fall back to FIT_DEFAULT_EXERCISES so missing goalWeight in saved data doesn't break scoring
   function groupImbalance(gid){
     const g=fitGroups.find(x=>x.id===gid);
     if(!g||!g.exerciseIds)return 0;
     const gaps=g.exerciseIds.map(eid=>{
-      const ex=fitExercises.find(x=>x.id===eid);if(!ex)return 0;
-      const isBW=(ex.unit||'lbs')==='bw';
-      const curr=isBW?(ex.targetReps||ex.sr||0):(ex.targetWeight||ex.sw||0);
-      const goal=isBW?(ex.goalReps||ex.gr||1):(ex.goalWeight||ex.gw||1);
-      return Math.max(0,1-(curr/goal));
+      const ex=fitExercises.find(x=>x.id===eid);
+      const def=FIT_DEFAULT_EXERCISES.find(d=>d.id===eid);
+      if(!ex&&!def)return 0;
+      const isBW=(ex?.unit||def?.unit)==='bw';
+      const curr=isBW?(ex?.targetReps||def?.sr||0):(ex?.targetWeight||def?.sw||0);
+      const goal=isBW?(ex?.goalReps||def?.gr||0):(ex?.goalWeight||def?.gw||0);
+      if(!goal||!curr)return 0;
+      return Math.max(0,Math.min(1,1-(curr/goal)));
     });
     return gaps.length?gaps.reduce((a,b)=>a+b,0)/gaps.length:0;
   }
+
+  const liftGroups=['grp_push_a','grp_pull','grp_legs','grp_push_b','grp_core'];
   const scores=liftGroups.map(gid=>{
-    const daysSince=groupLastTrained[gid]||0;
-    if(daysSince<2)return{gid,score:-1};
-    const recency=Math.min(daysSince/7,1)*0.6;
-    const imbalance=groupImbalance(gid)*0.4;
-    return{gid,score:recency+imbalance};
+    const ds=daysSinceGroup(gid);
+    if(ds<2)return{gid,score:-1};
+    return{gid,score:Math.min(ds/7,1)*0.6+groupImbalance(gid)*0.4};
   }).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+
   const cardioScore=Math.min(daysSinceCardio/4,1)*0.9+(streak>=2?0.2:0);
-  if(cardioScore>0.7&&(scores.length===0||cardioScore>scores[0].score)){
+  if(cardioScore>0.7&&(scores.length===0||cardioScore>(scores[0]?.score||0))){
     return{type:'cardio',label:'Run / Cardio',reason:daysSinceCardio===999?'No recent runs':`Last run ${daysSinceCardio} day${daysSinceCardio===1?'':'s'} ago`};
   }
-  if(scores.length===0){
-    return{type:'recovery',label:'Active Recovery',reason:'All groups trained recently — light movement day'};
+  if(!scores.length){
+    const recSessions=fitSessions.filter(s=>s.type==='recovery');
+    const idx=Math.min(recSessions.length,FIT_ACTIVE_RECOVERY_PLAN.length-1);
+    return{type:'recovery',label:'Active Recovery',reason:'All groups trained recently',recoveryIdx:idx};
   }
   const best=scores[0];
   const g=fitGroups.find(x=>x.id===best.gid);
-  const daysSince=groupLastTrained[best.gid];
-  return{type:'lifting',group:g,label:g?g.name:'Workout',reason:daysSince===999?'Not yet trained':`Last trained ${daysSince} day${daysSince===1?'':'s'} ago`};
+  const ds=daysSinceGroup(best.gid);
+  return{type:'lifting',group:g,label:g?g.name:'Workout',reason:ds===999?'Not yet trained':`Last trained ${ds} day${ds===1?'':'s'} ago`};
 }
 
 // ─────────────────────────── TARGETS TAB ─────────────────────────────────────
