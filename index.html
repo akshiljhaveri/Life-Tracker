@@ -4037,7 +4037,11 @@ function rFitToday(){
   try{
     if(fitActiveSession){rFitSessionCards();return;}
     const dateStr=td();
-    const entries=fitSchedule[dateStr]||[];
+    const entries=(fitSchedule[dateStr]||[]).map(e=>{
+      if((e.type==='group'||!e.type)&&(e.id||e.groupId))
+        return{...e,type:'lifting',groupId:e.groupId||e.id,exerciseIds:e.exerciseIds||[]};
+      return e;
+    });
     const liftEntry=entries.find(x=>x.type==='lifting');
     const runEntry=entries.find(x=>x.type==='run');
     const recovEntry=entries.find(x=>x.type==='recovery');
@@ -4912,7 +4916,12 @@ function fitRenderScheduleWeek(){
     const isToday=dateStr===todayStr;
     const dayName=d.toLocaleDateString('en-GB',{weekday:'long'});
     const dateLabel=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    const entries=fitSchedule[dateStr]||[];
+    // Normalise old {type:'group', id:'...'} entries to new lifting format
+    const entries=(fitSchedule[dateStr]||[]).map(e=>{
+      if((e.type==='group'||!e.type)&&(e.id||e.groupId))
+        return{...e,type:'lifting',groupId:e.groupId||e.id,exerciseIds:e.exerciseIds||[]};
+      return e;
+    });
     const liftEntry=entries.find(x=>x.type==='lifting');
     const runEntry=entries.find(x=>x.type==='run');
     const recovEntry=entries.find(x=>x.type==='recovery');
