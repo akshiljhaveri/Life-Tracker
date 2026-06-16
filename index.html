@@ -1352,6 +1352,20 @@ details>summary::marker{display:none;}
   </div>
 </div>
 
+<!-- EDIT SCHEDULE DAY MODAL -->
+<div class="mo" id="fit-edit-day-modal" onclick="if(event.target===this)closeM('fit-edit-day-modal')">
+  <div class="modal" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div id="fit-edit-day-title" style="font-weight:600;font-size:15px;"></div>
+      <button onclick="closeM('fit-edit-day-modal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">×</button>
+    </div>
+    <div id="fit-edit-day-rec" style="margin-bottom:12px;"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Scheduled exercises</div>
+    <div id="fit-edit-day-exercises" style="max-height:50vh;overflow-y:auto;"></div>
+    <button onclick="fitClearScheduleDate(window._fitEditDate);closeM('fit-edit-day-modal')" style="width:100%;margin-top:12px;font-size:12px;padding:8px;border-radius:8px;border:1px solid #c0392b;color:#c0392b;background:none;cursor:pointer;">✕ Clear schedule for this day</button>
+  </div>
+</div>
+
 <!-- REPLACE EXERCISE MODAL -->
 <div class="mo" id="fit-replace-modal" onclick="if(event.target===this)closeM('fit-replace-modal')">
   <div class="modal" style="max-width:420px;">
@@ -4021,83 +4035,72 @@ function rFitToday(){
   if(!el)return;
   try{
     if(fitActiveSession){rFitSessionCards();return;}
-    const today=fitTodayName();
-    const rec=fitGetRecommendation(td());
-    let html='<div style="font-family:\'Fraunces\',serif;font-size:22px;font-weight:400;margin-bottom:.25rem;">Today</div>';
-    html+=`<div style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">${esc(today)}</div>`;
-    // Recommendation badge
-    if(rec&&rec.type==='rest'){
-      html+=`<div style="background:var(--surface2);border-radius:var(--r);padding:12px 16px;margin-bottom:1rem;font-size:13px;color:var(--text-muted);">😴 ${esc(rec.label)} — ${esc(rec.reason)}</div>`;
-    } else if(rec&&rec.type==='recovery'){
-      const doneCount=fitSessions.filter(s=>s.type==='recovery').length;
-      const recSess=FIT_ACTIVE_RECOVERY_PLAN[Math.min(doneCount,FIT_ACTIVE_RECOVERY_PLAN.length-1)];
-      html+=`<div style="margin-bottom:1rem;">
-        <span class="fit-rec-badge">🚶 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.reason)}</span></span>
-        <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:12px 16px;margin-top:8px;">
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">${esc(recSess.label)}</div>
-          <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">${esc(recSess.note)}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${recSess.intervals.map(iv=>{const col=iv.t==='jog'?'#c0392b':iv.t==='mobility'?'#8E44AD':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${esc(iv.label||iv.t)} ${durStr}${iv.pace?` @ ${iv.pace}km/h`:''}</span>`;}).join('')}</div>
-          <div style="display:flex;gap:8px;">
-            <button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="flex:1;font-size:12px;">🚶 Log Recovery</button>
-            <button class="fit-ghost-btn" onclick="fitScheduleRecovery('${td()}')" style="flex:1;font-size:12px;">📅 Schedule</button>
+    const dateStr=td();
+    const entries=fitSchedule[dateStr]||[];
+    const liftEntry=entries.find(x=>x.type==='lifting');
+    const runEntry=entries.find(x=>x.type==='run');
+    const recovEntry=entries.find(x=>x.type==='recovery');
+    const restEntry=entries.find(x=>x.type==='rest');
+    const hasEntry=entries.length>0;
+    let html=`<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.75rem;">Today</div>`;
+    if(!hasEntry){
+      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:24px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">📋</div>
+        <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Nothing scheduled today</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Head to the Schedule tab to plan your workout.</div>
+        <button class="fit-ghost-btn" onclick="setFitTab('schedule')" style="font-size:12px;">→ Go to Schedule</button>
+      </div>`;
+    } else if(liftEntry){
+      const g=fitGroups.find(x=>x.id===liftEntry.groupId);
+      const exIds=liftEntry.exerciseIds||(g?.exerciseIds||[]);
+      const emoji=g?.muscles?.includes('Chest')||g?.muscles?.includes('Triceps')?'💪':g?.muscles?.includes('Lats')?'🏋️':g?.muscles?.includes('Quads')?'🦵':'💪';
+      const exRows=exIds.map(eid=>{
+        const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
+        const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+        const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 5px;border-radius:8px;background:var(--surface2);">${esc(m)}</span>`).join(' ');
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div><div style="font-size:13px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:2px;">${muscles}</div></div>
+          <div style="text-align:right;">${isBW?`<div style="font-size:12px;font-weight:500;color:var(--accent);">BW × ${r} reps</div>`:`<div style="font-size:12px;font-weight:500;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:11px;color:var(--text-faint);">${s} sets</div></div>
+        </div>`;
+      }).join('');
+      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:16px;font-weight:600;">${emoji} ${esc(g?.name||'Workout')}</div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;">✏️ Edit</button>
+            <button onclick="fitStartWorkoutFromSchedule('${dateStr}')" style="font-size:12px;padding:5px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
           </div>
         </div>
+        ${exRows}
       </div>`;
-    } else if(rec&&rec.type==='cardio'){
-      html+=`<div style="margin-bottom:1rem;">
-        <span class="fit-rec-badge">🏃 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.reason)}</span></span>
-        <button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="width:100%;margin-top:8px;">🏃 Log Run</button>
-        <button class="fit-ghost-btn" onclick="fitScheduleRun(fitTodayName())" style="width:100%;margin-top:6px;font-size:12px;">📅 Schedule next run session</button>
+    } else if(runEntry){
+      const sIdx=Math.min(runEntry.planSessionIdx||0,FIT_RUN_PLAN.length-1);
+      const session=FIT_RUN_PLAN[sIdx];
+      const intervals=session?session.intervals.map(iv=>{const c=iv.t==='run'?'#c0392b':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:rgba(0,0,0,.05);color:${c};">${iv.t==='run'?'Run':'Walk'} ${durStr} @ ${iv.pace}km/h</span>`;}).join(' '):'';
+      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:16px;font-weight:600;">🏃 ${session?esc(session.wLabel):'Run Session'}</div>
+          <button onclick="fitOpenCardioModal()" style="font-size:12px;padding:5px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${intervals}</div>
       </div>`;
-    } else if(rec&&rec.type==='lifting'&&rec.group){
-      html+=`<div style="margin-bottom:1rem;">
-        <span class="fit-rec-badge">💡 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.reason)}</span></span>
-        <button class="fit-pill-btn" onclick="fitStartGroupWorkout('${rec.group.id}')" style="width:100%;margin-top:8px;">▶ Start ${esc(rec.label)}</button>
+    } else if(recovEntry){
+      const sIdx=Math.min(recovEntry.planSessionIdx||0,FIT_ACTIVE_RECOVERY_PLAN.length-1);
+      const session=FIT_ACTIVE_RECOVERY_PLAN[sIdx];
+      const intervals=session?session.intervals.map(iv=>{const c=iv.t==='jog'?'#e67e22':iv.t==='walk'?'#219150':'#8E44AD';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:rgba(0,0,0,.05);color:${c};">${esc(iv.label||iv.t)} ${durStr}${iv.pace?` @ ${iv.pace}km/h`:''}</span>`;}).join(' '):'';
+      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:600;margin-bottom:10px;">🚶 ${session?esc(session.label):'Active Recovery'}</div>
+        ${session?`<div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">${esc(session.note)}</div>`:''}
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">${intervals}</div>
+        <button onclick="fitOpenCardioModal()" style="width:100%;padding:8px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:500;">▶ Start Recovery Session</button>
+      </div>`;
+    } else if(restEntry){
+      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:24px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">😴</div>
+        <div style="font-size:15px;font-weight:500;">Rest Day</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Recovery is part of the program.</div>
       </div>`;
     }
-    // Exercise preview for recommended group
-    if(rec&&rec.type==='lifting'&&rec.group){
-      const g=rec.group;
-      if(g&&g.exerciseIds&&g.exerciseIds.length){
-        html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:12px 16px;margin-bottom:1rem;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">${esc(g.name)} — ${g.exerciseIds.length} exercises</div>
-          ${g.exerciseIds.map(exId=>{
-            const ex=fitExercises.find(x=>x.id===exId);if(!ex)return'';
-            const isBW=(ex.unit||'lbs')==='bw';
-            const w=ex.targetWeight||ex.sw||0;
-            const r=ex.targetReps||ex.sr||8;
-            const s=ex.defaultSets||ex.sets||3;
-            const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--text-faint);">${m}</span>`).join(' ');
-            return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);">
-              <div><div style="font-size:13px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:2px;">${muscles}</div></div>
-              <div style="text-align:right;">${isBW?`<div style="font-size:12px;font-weight:500;color:var(--accent);">BW × ${r} reps</div>`:`<div style="font-size:12px;font-weight:500;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:11px;color:var(--text-faint);">${s} sets</div></div>
-            </div>`;
-          }).join('')}
-        </div>`;
-      }
-    }
-    // Scheduled today
-    const scheduled=fitSchedule[today]||[];
-    if(scheduled.length){
-      const labels=scheduled.map(item=>{
-        if(item.type==='group'){const g=fitGroups.find(x=>x.id===item.id);return g?g.name:'?';}
-        else{const e=fitExercises.find(x=>x.id===item.id);return e?e.name:'?';}
-      });
-      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">Scheduled for today</div>
-        <div style="font-size:14px;color:var(--text);line-height:2;">${labels.map(l=>`<span style="background:var(--surface2);border-radius:var(--rs);padding:3px 10px;margin:2px;display:inline-block;">${esc(l)}</span>`).join(' ')}</div>
-      </div>
-      <button class="fit-pill-btn" onclick="fitStartScheduled()" style="width:100%;margin-bottom:10px;">▶ Start scheduled workout</button>`;
-    }
-    // Quick start buttons for each group
-    html+=`<div style="margin-bottom:10px;">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">Quick start</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        ${fitGroups.slice(0,6).map(g=>`<button class="fit-ghost-btn" onclick="fitStartGroupWorkout('${g.id}')" style="font-size:12px;">${esc(g.name)}</button>`).join('')}
-        <button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:12px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Cardio</button>
-      </div>
-    </div>`;
-    html+=`<button class="fit-ghost-btn" onclick="fitStartBlank()" style="width:100%;margin-top:4px;">+ Custom workout</button>`;
     el.innerHTML=html;
   }catch(err){
     el.innerHTML=`<div style="font-size:13px;color:var(--red);padding:1rem;">Error: ${err.message}</div>`;
@@ -4228,6 +4231,7 @@ function rFitSessionCards(){
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+      <button class="fit-ghost-btn" onclick="fitEditActiveSession()" style="font-size:12px;">✏️ Edit</button>
       <button class="fit-ghost-btn" onclick="fitSessionAddGroup()">+ Group</button>
       <button class="fit-ghost-btn" onclick="fitSessionAddExercise()">+ Exercise</button>
       <button class="fit-pill-btn" onclick="fitPromptFinish()" style="margin-left:auto;">Finish</button>
@@ -4449,7 +4453,7 @@ function rFitSchedule(){
     const d=new Date(Date.now()+i*86400000).toISOString().slice(0,10);
     const dayIdx=new Date(d+'T12:00:00').getDay();
     const dayName=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][dayIdx===0?6:dayIdx-1];
-    const manualSched=fitSchedule?.[dayName];
+    const manualSched=fitSchedule?.[d];
     let rec;
     if(manualSched&&Array.isArray(manualSched)&&manualSched.length>0){
       const m=manualSched[0];
@@ -4463,6 +4467,8 @@ function rFitSchedule(){
       } else if(m.type==='group'&&m.id){
         const g=fitGroups.find(x=>x.id===m.id);
         rec={type:'lifting',group:g,label:g?g.name:'Workout',reason:'Manually scheduled'};
+      } else if(m.type==='rest'){
+        rec={type:'rest',label:'Rest Day',reason:'Manually scheduled'};
       } else {
         rec=fitGetRecommendation(d,simHistory);
       }
@@ -4482,13 +4488,22 @@ function rFitSchedule(){
     // Determine exerciseIds to display for lifting days
     let displayExIds=null;
     if(rec.type==='lifting'&&rec.group){
-      const liftEntry=fitSchedule?.[dayName]?.find(x=>x.type==='lifting'&&x.groupId===rec.group.id);
+      const liftEntry=fitSchedule?.[date]?.find(x=>x.type==='lifting'&&x.groupId===rec.group.id);
       displayExIds=liftEntry?.exerciseIds||rec.scheduledExIds||rec.group.exerciseIds||[];
     }
     let exerciseList='';
     let exercisePreview='';
     if(rec.type==='lifting'&&rec.group&&displayExIds){
-      exerciseList=`<div style="margin-top:8px;">${renderDayExercises(dayName,displayExIds,rec.group.id)}</div>`;
+      // Read-only preview in recommendations (no remove/replace buttons)
+      const exPreviewRows=displayExIds.map(eid=>{
+        const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
+        const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+          <span style="color:var(--text-muted);">${esc(ex.name)}</span>
+          <span style="color:var(--text-faint);">${isBW?`BW × ${r} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`}</span>
+        </div>`;
+      }).join('');
+      exerciseList=`<details style="margin-top:6px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;list-style:none;">${esc(rec.group.name)} · ${displayExIds.length} exercises ▸</summary><div style="margin-top:6px;">${exPreviewRows}</div></details>`;
     } else if(rec.type==='cardio'){
       const sIdx=Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1);
       const rs=FIT_RUN_PLAN[sIdx];
@@ -4507,13 +4522,15 @@ function rFitSchedule(){
     // Schedule action buttons
     let schedBtns='';
     if(hasManual){
-      schedBtns=`<button onclick="fitClearScheduleDay('${dayName}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:#c0392b;margin-top:8px;display:inline-block;">✕ Clear schedule</button>`;
+      schedBtns=`<span style="font-size:11px;color:var(--accent);margin-top:8px;display:inline-block;">✓ Scheduled</span> <button onclick="fitClearScheduleDate('${date}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:#c0392b;margin-top:8px;margin-left:6px;display:inline-block;">✕ Clear</button>`;
     } else if(rec.type==='lifting'&&rec.group){
-      schedBtns=`<button onclick="fitScheduleDayLifting('${dayName}','${rec.group.id}')" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule ${esc(rec.group.name)}</button>`;
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule ${esc(rec.group.name)}</button>`;
     } else if(rec.type==='cardio'){
-      schedBtns=`<button onclick="fitScheduleRun('${dayName}')" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule run</button>`;
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule run</button>`;
     } else if(rec.type==='recovery'){
-      schedBtns=`<button onclick="fitScheduleRecovery('${date}')" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule recovery</button>`;
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule recovery</button>`;
+    } else if(rec.type==='rest'){
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',{type:'rest',label:'Rest Day'})" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--text-muted);margin-top:8px;display:inline-block;">📅 Mark as rest</button>`;
     }
     return`<div style="padding:10px 0;border-bottom:1px solid var(--border)${isToday?';background:rgba(var(--accent-rgb),.04);margin:0 -4px;padding:10px 4px;border-radius:6px;':''}">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -4579,7 +4596,160 @@ function fitScheduleDayLifting(dayName, groupId){
   save();showToast(`${dayName} scheduled: ${g.name}`);rFitToday();rFitSchedule();
 }
 
-// Category constants for exercise replacement filtering
+// ── DATE-KEY SCHEDULE FUNCTIONS ─────────────────────────────────────────────
+
+function _fmtDateShort(dateStr){
+  return new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
+
+function fitScheduleDayByDate(dateStr, rec){
+  if(!rec)return;
+  if(!fitSchedule[dateStr])fitSchedule[dateStr]=[];
+  if(rec.type==='lifting'&&rec.group){
+    fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='lifting'&&x.type!=='group');
+    fitSchedule[dateStr].push({type:'lifting',groupId:rec.group.id,exerciseIds:[...(rec.group.exerciseIds||[])]});
+    showToast(`${rec.group.name} scheduled for ${_fmtDateShort(dateStr)}`);
+  } else if(rec.type==='cardio'){
+    fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='run'&&x.type!=='cardio');
+    fitSchedule[dateStr].push({type:'run',planSessionIdx:Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1)});
+    showToast(`Run scheduled for ${_fmtDateShort(dateStr)}`);
+  } else if(rec.type==='recovery'){
+    fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='recovery');
+    const doneCount=fitSessions.filter(s=>s.type==='recovery').length;
+    fitSchedule[dateStr].push({type:'recovery',planSessionIdx:Math.min(rec.recoveryIdx??doneCount,FIT_ACTIVE_RECOVERY_PLAN.length-1)});
+    showToast(`Recovery scheduled for ${_fmtDateShort(dateStr)}`);
+  } else if(rec.type==='rest'){
+    fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='rest');
+    fitSchedule[dateStr].push({type:'rest'});
+    showToast(`Rest day scheduled for ${_fmtDateShort(dateStr)}`);
+  }
+  save();rFitSchedule();rFitToday();
+}
+
+function fitClearScheduleDate(dateStr){
+  delete fitSchedule[dateStr];
+  save();rFitSchedule();rFitToday();
+}
+
+function fitRemoveExFromDate(dateStr, groupId, exId){
+  const entry=fitSchedule[dateStr]?.find(x=>x.type==='lifting'&&x.groupId===groupId);
+  if(!entry)return;
+  entry.exerciseIds=(entry.exerciseIds||[]).filter(id=>id!==exId);
+  save();closeM('fit-edit-day-modal');rFitSchedule();rFitToday();
+}
+
+function fitReplaceExOnDate(dateStr, groupId, exId){
+  fitReplaceExercise(dateStr, groupId, exId); // reuses existing modal, works with date or day-name key
+}
+
+function fitEditScheduleDay(dateStr){
+  window._fitEditDate=dateStr;
+  const rec=fitGetRecommendation(dateStr);
+  const entries=fitSchedule[dateStr]||[];
+  const entry=entries.find(x=>x.type==='lifting');
+  const recLabel=rec.type==='lifting'&&rec.group?`💪 ${rec.group.name}`:
+    rec.type==='cardio'?'🏃 Run / Cardio':
+    rec.type==='recovery'?'🚶 Active Recovery':'😴 Rest Day';
+  let exRows='';
+  if(entry){
+    exRows=(entry.exerciseIds||[]).map(eid=>{
+      const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
+      const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+      const target=isBW?`BW × ${r} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`;
+      const ei=eid.replace(/'/g,"\\'");const gi=entry.groupId.replace(/'/g,"\\'");const ds=dateStr.replace(/'/g,"\\'");
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div style="min-width:0;flex:1;"><div style="font-size:13px;">${esc(ex.name)}</div><div style="font-size:10px;color:var(--text-faint);">${target}</div></div>
+        <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+          <button onclick="fitRemoveExFromDate('${ds}','${gi}','${ei}')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:#c0392b;">✕</button>
+          <button onclick="fitReplaceExOnDate('${ds}','${gi}','${ei}')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--accent);">⇄</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  const titleEl=document.getElementById('fit-edit-day-title');
+  const recEl=document.getElementById('fit-edit-day-rec');
+  const exEl=document.getElementById('fit-edit-day-exercises');
+  if(titleEl)titleEl.textContent=_fmtDateShort(dateStr);
+  if(recEl)recEl.innerHTML=`<div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">Recommended</div><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;"><span style="font-size:13px;">${recLabel}</span><button onclick="fitScheduleDayByDate('${dateStr}',fitGetRecommendation('${dateStr}'));closeM('fit-edit-day-modal')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Use this</button></div>`;
+  if(exEl)exEl.innerHTML=exRows||'<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No exercises scheduled</div>';
+  openM('fit-edit-day-modal');
+}
+
+function renderDayExercisesByDate(dateStr, exIds, groupId){
+  if(!exIds||!exIds.length)return'<div style="font-size:12px;color:var(--text-faint);padding:4px 0;">No exercises.</div>';
+  return exIds.map(eid=>{
+    const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
+    const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+    const target=isBW?`BW × ${r} reps × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
+    const ei=eid.replace(/'/g,"\\'");const gi=groupId.replace(/'/g,"\\'");const ds=dateStr.replace(/'/g,"\\'");
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+      <div style="min-width:0;flex:1;"><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(ex.name)}</div><div style="font-size:10px;color:var(--text-faint);">${(ex.muscles||[]).slice(0,3).join(' · ')}</div></div>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;margin-left:8px;">
+        <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">${target}</span>
+        <button onclick="fitRemoveExFromDate('${ds}','${gi}','${ei}')" title="Remove" style="font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:#c0392b;">✕</button>
+        <button onclick="fitReplaceExOnDate('${ds}','${gi}','${ei}')" title="Replace" style="font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--accent);">⇄</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fitStartWorkoutFromSchedule(dateStr){
+  if(fitActiveSession&&!confirm('You have an active session. Discard it?'))return;
+  if(fitSessionTimer)clearInterval(fitSessionTimer);
+  const entries=fitSchedule[dateStr]||[];
+  const entry=entries.find(x=>x.type==='lifting');
+  if(!entry){alert('No lifting session scheduled for today.');return;}
+  const g=fitGroups.find(x=>x.id===entry.groupId);
+  const exIds=entry.exerciseIds||(g?.exerciseIds||[]);
+  let seq=0;
+  const items=exIds.map(eid=>{
+    const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);
+    if(!ex)return null;
+    return{id:'si_'+(Date.now()+seq++),exId:ex.id,name:ex.name,groupName:g?.name||'',sets:[],
+      targetWeight:ex.targetWeight||ex.sw||0,targetReps:ex.targetReps||ex.sr||8,targetSets:ex.defaultSets||ex.sets||3,unit:ex.unit||'lbs'};
+  }).filter(Boolean);
+  if(!items.length){alert('No exercises found.');return;}
+  fitActiveSession={id:'ses_'+Date.now(),type:'lifting',name:(g?.name||'Workout'),startTime:Date.now(),date:dateStr,groupId:entry.groupId,items};
+  fitCurrentExId=items[0]?.id||null;
+  fitStartTimer();setFitTab('today');
+}
+
+function fitEditActiveSession(){
+  if(!fitActiveSession)return;
+  window._fitEditDate=fitActiveSession.date||td();
+  const exRows=fitActiveSession.items.map((item,idx)=>{
+    const isBW=(fitExercises.find(x=>x.id===item.exId)||FIT_DEFAULT_EXERCISES.find(x=>x.id===item.exId))?.unit==='bw';
+    const tw=item.targetWeight||0;const tr=item.targetReps||8;
+    return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <div style="font-size:13px;font-weight:500;">${esc(item.name)}</div>
+        <button onclick="fitRemoveExFromActive(${idx})" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:#c0392b;">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        ${isBW?`<span style="font-size:12px;color:var(--text-muted);">Bodyweight</span>`:
+          `<input type="number" value="${tw}" onchange="fitActiveSession.items[${idx}].targetWeight=+this.value" style="width:65px;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);"><span style="font-size:12px;color:var(--text-muted);">lbs</span>`}
+        <span style="font-size:12px;color:var(--text-muted);">×</span>
+        <input type="number" value="${tr}" onchange="fitActiveSession.items[${idx}].targetReps=+this.value" style="width:50px;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--text-muted);">reps · ${item.sets?.length||0} sets logged</span>
+      </div>
+    </div>`;
+  }).join('');
+  const titleEl=document.getElementById('fit-edit-day-title');
+  const recEl=document.getElementById('fit-edit-day-rec');
+  const exEl=document.getElementById('fit-edit-day-exercises');
+  if(titleEl)titleEl.textContent='Edit Active Workout';
+  if(recEl)recEl.innerHTML='<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Changes apply immediately. Edits to weights/reps update targets for this session.</div>';
+  if(exEl)exEl.innerHTML=exRows||'<div style="font-size:12px;color:var(--text-faint);">No exercises.</div>';
+  openM('fit-edit-day-modal');
+}
+
+function fitRemoveExFromActive(idx){
+  if(!fitActiveSession)return;
+  fitActiveSession.items.splice(idx,1);
+  closeM('fit-edit-day-modal');rFitSessionCards();
+}
+
+// ── CATEGORY CONSTANTS FOR EXERCISE REPLACEMENT ─────────────────────────────
 const PUSH_MUSCLES=['Chest','Front Delt','Side Delt','Triceps'];
 const PULL_MUSCLES=['Lats','Traps','Rear Delt','Biceps','Forearms'];
 const LEG_MUSCLES=['Quads','Hamstrings','Glutes','Calves'];
@@ -4709,61 +4879,117 @@ function fitConfirmReplace(dayName, groupId, oldId, newId){
   showToast('Exercise replaced');
 }
 
-function fitScheduleRun(dayName){
-  if(!dayName)dayName=fitTodayName();
+function fitScheduleRun(dateStr){
+  if(!dateStr||!/^\d{4}-\d{2}-\d{2}$/.test(dateStr))dateStr=td();
   const sessionIdx=Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1);
-  if(!fitSchedule[dayName])fitSchedule[dayName]=[];
-  fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='run');
-  fitSchedule[dayName].push({type:'run',planSessionIdx:sessionIdx});
+  if(!fitSchedule[dateStr])fitSchedule[dateStr]=[];
+  fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='run');
+  fitSchedule[dateStr].push({type:'run',planSessionIdx:sessionIdx});
   save();
-  showToast(`Run Session ${sessionIdx+1} scheduled for ${dayName}s`);
+  showToast(`Run Session ${sessionIdx+1} scheduled for ${_fmtDateShort(dateStr)}`);
   rFitToday();rFitSchedule();
 }
 
 function fitScheduleRecovery(dateStr){
-  if(!dateStr)dateStr=td();
-  const dayName=new Date(dateStr+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+  if(!dateStr||!/^\d{4}-\d{2}-\d{2}$/.test(dateStr))dateStr=td();
   const doneCount=fitSessions.filter(s=>s.type==='recovery').length;
   const sessionIdx=Math.min(doneCount,FIT_ACTIVE_RECOVERY_PLAN.length-1);
-  if(!fitSchedule[dayName])fitSchedule[dayName]=[];
-  fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='recovery');
-  fitSchedule[dayName].push({type:'recovery',planSessionIdx:sessionIdx});
+  if(!fitSchedule[dateStr])fitSchedule[dateStr]=[];
+  fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='recovery');
+  fitSchedule[dateStr].push({type:'recovery',planSessionIdx:sessionIdx});
   save();
-  showToast(`Recovery session ${sessionIdx+1} scheduled for ${dayName}s`);
+  showToast(`Recovery session ${sessionIdx+1} scheduled for ${_fmtDateShort(dateStr)}`);
   rFitToday();rFitSchedule();
 }
 
 function fitRenderScheduleWeek(){
-  // Get current week Mon-Sun based on today
-  const now=new Date();
-  const dow=now.getDay(); // 0=Sun
-  const mondayOffset=dow===0?-6:1-dow;
-  const monday=new Date(now);monday.setDate(now.getDate()+mondayOffset);
-  monday.setHours(0,0,0,0);
   const todayStr=td();
-  return `<div style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Week of ${monday.toLocaleDateString('en-US',{month:'short',day:'numeric'})} — resets Sunday midnight</div>`+
-  FIT_DAYS.map((day,i)=>{
-    const dayDate=new Date(monday);dayDate.setDate(monday.getDate()+i);
-    const dayStr=dayDate.getFullYear()+'-'+String(dayDate.getMonth()+1).padStart(2,'0')+'-'+String(dayDate.getDate()).padStart(2,'0');
-    const isToday=dayStr===todayStr;
-    const items=fitSchedule[day]||[];
-    const rows=items.map(item=>{
-      const label=item.type==='group'?(fitGroups.find(x=>x.id===item.id)||{name:'?'}).name:(fitExercises.find(x=>x.id===item.id)||{name:'?'}).name;
-      const icon=item.type==='group'?'🏋️':'💪';
-      return `<div class="fit-day-group-row">${icon} ${esc(label)}</div>`;
-    }).join('');
-    const workedOut=fitSessions.some(s=>s.date===dayStr);
-    return `<div class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
-      <div class="fit-day-head">
-        <div>
-          <div class="fit-day-name">${esc(day)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dayDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>${isToday?' <span style="font-size:10px;background:var(--accent);color:#F5F3EE;border-radius:4px;padding:1px 6px;vertical-align:middle;">Today</span>':''}</div>
-          ${workedOut?'<div style="font-size:11px;color:var(--accent);margin-top:1px;">✓ Worked out</div>':''}
+  let html=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">Next 7 days — tap Edit to plan or modify</div>`;
+  for(let i=0;i<7;i++){
+    const d=new Date(Date.now()+i*86400000);
+    const dateStr=d.toISOString().slice(0,10);
+    const isToday=dateStr===todayStr;
+    const dayName=d.toLocaleDateString('en-GB',{weekday:'long'});
+    const dateLabel=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    const entries=fitSchedule[dateStr]||[];
+    const liftEntry=entries.find(x=>x.type==='lifting');
+    const runEntry=entries.find(x=>x.type==='run');
+    const recovEntry=entries.find(x=>x.type==='recovery');
+    const restEntry=entries.find(x=>x.type==='rest');
+    const hasEntry=entries.length>0;
+    const workedOut=fitSessions.some(s=>s.date===dateStr);
+    const todayBadge=isToday?`<span style="font-size:10px;background:var(--accent);color:#F5F3EE;border-radius:4px;padding:1px 6px;vertical-align:middle;margin-left:6px;">Today</span>`:'';
+    const workedBadge=workedOut?`<div style="font-size:11px;color:var(--accent);margin-top:2px;">✓ Worked out</div>`:'';
+    const editBtn=`<button class="fit-ghost-btn" onclick="fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:4px 10px;">Edit</button>`;
+
+    if(!hasEntry){
+      html+=`<div class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
+        <div class="fit-day-head">
+          <div><div class="fit-day-name">${esc(dayName)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dateLabel}</span>${todayBadge}</div>${workedBadge}</div>
+          ${editBtn}
         </div>
-        <button class="fit-ghost-btn" onclick="fitOpenDayEditor('${day}')">Edit</button>
-      </div>
-      ${items.length?`<div class="fit-day-body">${rows}</div>`:`<div style="padding:10px 16px 14px;font-size:12px;color:var(--text-faint);">Rest day — tap Edit to add exercises.</div>`}
-    </div>`;
-  }).join('');
+        <div style="padding:6px 16px 12px;font-size:12px;color:var(--text-faint);">No workout scheduled</div>
+      </div>`;
+    } else if(liftEntry){
+      const g=fitGroups.find(x=>x.id===liftEntry.groupId);
+      const exIds=liftEntry.exerciseIds||(g?.exerciseIds||[]);
+      const emoji=g?.muscles?.includes('Chest')||g?.muscles?.includes('Triceps')?'💪':g?.muscles?.includes('Lats')?'🏋️':g?.muscles?.includes('Quads')?'🦵':'💪';
+      const exRows=renderDayExercisesByDate(dateStr,exIds,liftEntry.groupId);
+      html+=`<details class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
+        <summary style="list-style:none;cursor:pointer;">
+          <div class="fit-day-head" style="pointer-events:none;">
+            <div><div class="fit-day-name">${esc(dayName)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dateLabel}</span>${todayBadge}</div>${workedBadge}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;font-weight:500;">${emoji} ${esc(g?.name||'Workout')}</span>
+              <span style="pointer-events:all;">${editBtn}</span>
+              <span style="font-size:14px;color:var(--text-faint);">▾</span>
+            </div>
+          </div>
+        </summary>
+        <div style="padding:0 16px 12px;">${exRows}
+          <button onclick="fitClearScheduleDate('${dateStr}')" style="width:100%;margin-top:10px;font-size:11px;padding:6px;border-radius:8px;border:1px solid #c0392b;color:#c0392b;background:none;cursor:pointer;">✕ Remove from schedule</button>
+        </div>
+      </details>`;
+    } else if(runEntry){
+      const sIdx=Math.min(runEntry.planSessionIdx||0,FIT_RUN_PLAN.length-1);
+      const rs=FIT_RUN_PLAN[sIdx];
+      const intervals=rs?rs.intervals.map(iv=>{const col=iv.t==='run'?'#c0392b':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${iv.t==='run'?'Run':'Walk'} ${durStr} @ ${iv.pace}km/h</span>`;}).join(' '):'';
+      html+=`<details class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
+        <summary style="list-style:none;cursor:pointer;">
+          <div class="fit-day-head" style="pointer-events:none;">
+            <div><div class="fit-day-name">${esc(dayName)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dateLabel}</span>${todayBadge}</div>${workedBadge}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:13px;font-weight:500;">🏃 ${rs?esc(rs.wLabel):'Run'}</span>
+              <span style="pointer-events:all;">${editBtn}</span>
+              <span style="font-size:14px;color:var(--text-faint);">▾</span>
+            </div>
+          </div>
+        </summary>
+        <div style="padding:4px 16px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${intervals}</div>
+          <button onclick="fitClearScheduleDate('${dateStr}')" style="width:100%;font-size:11px;padding:6px;border-radius:8px;border:1px solid #c0392b;color:#c0392b;background:none;cursor:pointer;">✕ Remove from schedule</button>
+        </div>
+      </details>`;
+    } else if(recovEntry){
+      const sIdx=Math.min(recovEntry.planSessionIdx||0,FIT_ACTIVE_RECOVERY_PLAN.length-1);
+      const rs=FIT_ACTIVE_RECOVERY_PLAN[sIdx];
+      html+=`<div class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
+        <div class="fit-day-head">
+          <div><div class="fit-day-name">${esc(dayName)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dateLabel}</span>${todayBadge}</div>${workedBadge}</div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:500;">🚶 ${rs?esc(rs.label):'Recovery'}</span>${editBtn}</div>
+        </div>
+        <button onclick="fitClearScheduleDate('${dateStr}')" style="margin:0 16px 12px;font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid #c0392b;color:#c0392b;background:none;cursor:pointer;">✕ Remove</button>
+      </div>`;
+    } else if(restEntry){
+      html+=`<div class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
+        <div class="fit-day-head">
+          <div><div class="fit-day-name">${esc(dayName)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dateLabel}</span>${todayBadge}</div>${workedBadge}</div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:500;">😴 Rest Day</span>${editBtn}</div>
+        </div>
+        <button onclick="fitClearScheduleDate('${dateStr}')" style="margin:0 16px 12px;font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);color:var(--text-muted);background:none;cursor:pointer;">✕ Remove</button>
+      </div>`;
+    }
+  }
+  return html;
 }
 
 function fitRenderScheduleCal(){
@@ -4788,18 +5014,20 @@ function fitRenderScheduleCal(){
   const cellsHTML=cells.map(c=>{
     const dateStr=c.year+'-'+String(c.month+1).padStart(2,'0')+'-'+String(c.day).padStart(2,'0');
     const isToday=dateStr===todayStr;
-    // Map JS day index to FIT_DAYS name (cells are Mon-first)
-    const jsDate=new Date(c.year,c.month,c.day);
-    const dow=jsDate.getDay(); // 0=Sun
-    const fitDayName=FIT_DAYS[dow===0?6:dow-1];
-    const schedItems=fitSchedule[fitDayName]||[];
+    const schedItems=fitSchedule[dateStr]||[];
     const hasSchedule=!c.other&&schedItems.length>0;
+    const workedOutCal=!c.other&&fitSessions.some(s=>s.date===dateStr);
     const labels=schedItems.slice(0,2).map(item=>{
-      return item.type==='group'?(fitGroups.find(x=>x.id===item.id)||{name:'?'}).name:(fitExercises.find(x=>x.id===item.id)||{name:'?'}).name;
+      if(item.type==='lifting'){const g=fitGroups.find(x=>x.id===item.groupId);return g?g.name:'Workout';}
+      if(item.type==='run')return'Run';
+      if(item.type==='recovery')return'Recovery';
+      if(item.type==='rest')return'Rest';
+      if(item.type==='group'){const g=fitGroups.find(x=>x.id===item.id);return g?g.name:'?';}
+      return'?';
     });
-    const cls=['fit-cal-day',c.other?'other-month':'',isToday?'today':'',hasSchedule?'has-schedule':''].filter(Boolean).join(' ');
-    return `<div class="${cls}" onclick="${c.other?'':'fitOpenDayEditor(\''+fitDayName+'\')'}">
-      <div class="fit-cal-day-num">${c.day}</div>
+    const cls=['fit-cal-day',c.other?'other-month':'',isToday?'today':'',hasSchedule?'has-schedule':'',workedOutCal?'worked-out':''].filter(Boolean).join(' ');
+    return `<div class="${cls}" onclick="${c.other?'':'fitEditScheduleDay(\''+dateStr+'\')'}">
+      <div class="fit-cal-day-num">${c.day}${workedOutCal?'<span style="color:var(--accent);font-size:9px;"> ✓</span>':''}</div>
       ${labels.map(l=>`<div class="fit-cal-day-label">${esc(l)}</div>`).join('')}
       ${schedItems.length>2?`<div style="font-size:9px;color:var(--text-faint);">+${schedItems.length-2} more</div>`:''}
     </div>`;
@@ -6362,7 +6590,27 @@ function applyData(d){
   } else {
     fitGroups=FIT_DEFAULT_GROUPS.map(g=>({...g,exerciseIds:[...g.exerciseIds]}));
   }
-  if(d.fitSchedule)fitSchedule=d.fitSchedule;
+  if(d.fitSchedule){
+    fitSchedule=d.fitSchedule;
+    // Migrate day-name keys to date keys
+    const _migDays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const _hasDayKeys=_migDays.some(dn=>fitSchedule[dn]&&fitSchedule[dn].length);
+    if(_hasDayKeys){
+      const _now=new Date();const _todayDow=_now.getDay()===0?6:_now.getDay()-1;
+      _migDays.forEach((dn,dow)=>{
+        if(!fitSchedule[dn]||!fitSchedule[dn].length)return;
+        const daysAhead=(dow-_todayDow+7)%7;
+        const dd=new Date(_now);dd.setDate(_now.getDate()+daysAhead);
+        const dk=dd.toISOString().slice(0,10);
+        if(!fitSchedule[dk])fitSchedule[dk]=[];
+        fitSchedule[dk].push(...fitSchedule[dn]);
+        delete fitSchedule[dn];
+      });
+    }
+    // Remove past dates
+    const _todayStr=new Date().toISOString().slice(0,10);
+    Object.keys(fitSchedule).forEach(k=>{if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&k<_todayStr)delete fitSchedule[k];});
+  }
   if(d.fitSessions)fitSessions=d.fitSessions;
   if(typeof d.fitRunSessionIdx==='number')fitRunSessionIdx=d.fitRunSessionIdx;
   if(d.fitActiveSession!==undefined){
