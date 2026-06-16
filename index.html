@@ -5151,7 +5151,7 @@ function rFitGroups(){
     <button class="fit-pill-btn" onclick="fitOpenNewGroup()">+ New group</button>
   </div>`+
   fitGroups.map(g=>{
-    const exNames=g.exerciseIds.map(id=>{const e=fitExercises.find(x=>x.id===id);return e?esc(e.name):'?';});
+    const exNames=g.exerciseIds.map(id=>{const e=fitExercises.find(x=>x.id===id)||FIT_DEFAULT_EXERCISES.find(x=>x.id===id);return e?esc(e.name):'?';});
     return `<div class="fit-card">
       <div class="fit-card-head">
         <div>
