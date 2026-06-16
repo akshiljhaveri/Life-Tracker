@@ -1052,6 +1052,7 @@ details>summary::marker{display:none;}
     <button class="fit-tab-btn"   id="ft-groups"    onclick="setFitTab('groups')">Groups</button>
     <button class="fit-tab-btn"   id="ft-exercises" onclick="setFitTab('exercises')">Exercises</button>
     <button class="fit-tab-btn"   id="ft-history"   onclick="setFitTab('history')">History</button>
+    <button class="fit-tab-btn"   id="ft-targets"   onclick="setFitTab('targets')">Targets</button>
   </div>
   <div id="fit-dash-panel"></div>
   <div id="fit-today-panel"    style="display:none;"></div>
@@ -1060,6 +1061,7 @@ details>summary::marker{display:none;}
   <div id="fit-groups-panel"   style="display:none;"></div>
   <div id="fit-exercises-panel" style="display:none;"></div>
   <div id="fit-history-panel"  style="display:none;"></div>
+  <div id="fit-targets-panel"  style="display:none;"></div>
 </div>
 
 <!-- GROUP EDITOR MODAL -->
@@ -1740,114 +1742,121 @@ const ACHIEVEMENTS=[
 
 // FITNESS — MUSCLE COLOURS
 const FIT_MUSCLE_COLORS={
-  'Chest':     {c:'#B71C1C',bg:'rgba(183,28,28,0.13)'},
-  'Back':      {c:'#1565C0',bg:'rgba(21,101,192,0.13)'},
-  'Shoulders': {c:'#6A1B9A',bg:'rgba(106,27,154,0.13)'},
-  'Biceps':    {c:'#2E7D32',bg:'rgba(46,125,50,0.13)'},
-  'Triceps':   {c:'#00838F',bg:'rgba(0,131,143,0.13)'},
-  'Legs':      {c:'#E65100',bg:'rgba(230,81,0,0.13)'},
-  'Glutes':    {c:'#AD1457',bg:'rgba(173,20,87,0.13)'},
-  'Abs':       {c:'#F9A825',bg:'rgba(249,168,37,0.15)'},
-  'Hamstrings':{c:'#4527A0',bg:'rgba(69,39,160,0.13)'},
-  'Calves':    {c:'#00695C',bg:'rgba(0,105,92,0.13)'},
-  'Forearms':  {c:'#558B2F',bg:'rgba(85,139,47,0.13)'},
-  'Cardio':    {c:'#D84315',bg:'rgba(216,67,21,0.13)'},
-  'Other':     {c:'#546E7A',bg:'rgba(84,110,122,0.13)'},
+  'Chest':      {c:'#B71C1C',bg:'rgba(183,28,28,0.13)'},
+  'Back':       {c:'#1565C0',bg:'rgba(21,101,192,0.13)'},
+  'Shoulders':  {c:'#6A1B9A',bg:'rgba(106,27,154,0.13)'},
+  'Biceps':     {c:'#2E7D32',bg:'rgba(46,125,50,0.13)'},
+  'Triceps':    {c:'#00838F',bg:'rgba(0,131,143,0.13)'},
+  'Legs':       {c:'#E65100',bg:'rgba(230,81,0,0.13)'},
+  'Glutes':     {c:'#AD1457',bg:'rgba(173,20,87,0.13)'},
+  'Abs':        {c:'#F9A825',bg:'rgba(249,168,37,0.15)'},
+  'Hamstrings': {c:'#4527A0',bg:'rgba(69,39,160,0.13)'},
+  'Calves':     {c:'#00695C',bg:'rgba(0,105,92,0.13)'},
+  'Forearms':   {c:'#558B2F',bg:'rgba(85,139,47,0.13)'},
+  'Cardio':     {c:'#D84315',bg:'rgba(216,67,21,0.13)'},
+  'Other':      {c:'#546E7A',bg:'rgba(84,110,122,0.13)'},
+  // Sub-muscle keys (inherit parent group colors)
+  'Front Delt': {c:'#6A1B9A',bg:'rgba(106,27,154,0.13)'},
+  'Side Delt':  {c:'#6A1B9A',bg:'rgba(106,27,154,0.13)'},
+  'Rear Delt':  {c:'#6A1B9A',bg:'rgba(106,27,154,0.13)'},
+  'Traps':      {c:'#1565C0',bg:'rgba(21,101,192,0.13)'},
+  'Lats':       {c:'#1565C0',bg:'rgba(21,101,192,0.13)'},
+  'Quads':      {c:'#E65100',bg:'rgba(230,81,0,0.13)'},
 };
 
 // FITNESS — DEFAULT EXERCISE LIBRARY
 const FIT_DEFAULT_EXERCISES=[
   // CHEST
-  {id:'dex_1',name:'Barbell Bench Press',muscles:['Chest','Triceps','Shoulders'],youtube:'https://www.youtube.com/results?search_query=barbell+bench+press+form+tutorial'},
-  {id:'dex_2',name:'Dumbbell Bench Press',muscles:['Chest','Triceps','Shoulders'],youtube:'https://www.youtube.com/results?search_query=dumbbell+bench+press+form+tutorial'},
-  {id:'dex_3',name:'Machine Chest Press',muscles:['Chest','Triceps'],youtube:'https://www.youtube.com/results?search_query=machine+chest+press+form+tutorial'},
-  {id:'dex_4',name:'Barbell Incline Bench Press',muscles:['Chest','Triceps','Shoulders'],youtube:'https://www.youtube.com/results?search_query=incline+barbell+bench+press+form+tutorial'},
-  {id:'dex_5',name:'Dumbbell Incline Press',muscles:['Chest','Triceps','Shoulders'],youtube:'https://www.youtube.com/results?search_query=dumbbell+incline+press+form+tutorial'},
-  {id:'dex_6',name:'Dumbbell Fly',muscles:['Chest','Shoulders'],youtube:'https://www.youtube.com/results?search_query=dumbbell+fly+form+tutorial'},
-  {id:'dex_7',name:'Cable Fly',muscles:['Chest'],youtube:'https://www.youtube.com/results?search_query=cable+fly+chest+form+tutorial'},
-  {id:'dex_8',name:'Pec Deck Machine',muscles:['Chest'],youtube:'https://www.youtube.com/results?search_query=pec+deck+machine+form+tutorial'},
-  {id:'dex_9',name:'Push-Up',muscles:['Chest','Triceps','Shoulders'],youtube:'https://www.youtube.com/results?search_query=push+up+proper+form+tutorial'},
-  {id:'dex_10',name:'Chest Dips',muscles:['Chest','Triceps'],youtube:'https://www.youtube.com/results?search_query=chest+dips+form+tutorial'},
+  {id:'dex_1',name:'Barbell Bench Press',muscles:['Chest','Front Delt','Triceps'],sw:70,sr:10,gw:135,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+bench+press+form+tutorial'},
+  {id:'dex_2',name:'Dumbbell Bench Press',muscles:['Chest','Front Delt','Triceps'],sw:30,sr:10,gw:55,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+bench+press+form+tutorial'},
+  {id:'dex_3',name:'Machine Chest Press',muscles:['Chest','Triceps'],sw:60,sr:10,gw:120,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=machine+chest+press+form+tutorial'},
+  {id:'dex_4',name:'Barbell Incline Bench Press',muscles:['Chest','Front Delt','Triceps'],sw:55,sr:10,gw:105,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=incline+barbell+bench+press+form+tutorial'},
+  {id:'dex_5',name:'Dumbbell Incline Press',muscles:['Chest','Front Delt','Triceps'],sw:25,sr:10,gw:45,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+incline+press+form+tutorial'},
+  {id:'dex_6',name:'Dumbbell Fly',muscles:['Chest','Front Delt'],sw:15,sr:12,gw:30,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+fly+form+tutorial'},
+  {id:'dex_7',name:'Cable Fly',muscles:['Chest'],sw:20,sr:12,gw:35,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+fly+chest+form+tutorial'},
+  {id:'dex_8',name:'Pec Deck Machine',muscles:['Chest'],sw:45,sr:12,gw:90,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=pec+deck+machine+form+tutorial'},
+  {id:'dex_9',name:'Push-Up',muscles:['Chest','Front Delt','Triceps'],sw:0,sr:10,gw:0,gr:20,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=push+up+proper+form+tutorial'},
+  {id:'dex_10',name:'Chest Dips',muscles:['Chest','Triceps','Front Delt'],sw:0,sr:6,gw:0,gr:12,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=chest+dips+form+tutorial'},
   // BACK
-  {id:'dex_11',name:'Barbell Deadlift',muscles:['Back','Glutes','Hamstrings'],youtube:'https://www.youtube.com/results?search_query=barbell+deadlift+form+tutorial'},
-  {id:'dex_12',name:'Dumbbell Row',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=dumbbell+row+form+tutorial'},
-  {id:'dex_13',name:'Barbell Bent-Over Row',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=barbell+bent+over+row+form+tutorial'},
-  {id:'dex_14',name:'Seated Cable Row',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=seated+cable+row+form+tutorial'},
-  {id:'dex_15',name:'Lat Pulldown',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=lat+pulldown+form+tutorial'},
-  {id:'dex_16',name:'Pull-Up',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=pull+up+form+tutorial'},
-  {id:'dex_17',name:'T-Bar Row',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=t+bar+row+form+tutorial'},
-  {id:'dex_18',name:'Face Pull',muscles:['Shoulders','Back'],youtube:'https://www.youtube.com/results?search_query=face+pull+form+tutorial'},
-  {id:'dex_19',name:'Machine Row',muscles:['Back','Biceps'],youtube:'https://www.youtube.com/results?search_query=machine+row+form+tutorial'},
-  {id:'dex_20',name:'Hyperextension',muscles:['Back','Glutes'],youtube:'https://www.youtube.com/results?search_query=hyperextension+back+extension+form+tutorial'},
+  {id:'dex_11',name:'Barbell Deadlift',muscles:['Lats','Traps','Glutes','Hamstrings'],sw:90,sr:5,gw:175,gr:5,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+deadlift+form+tutorial'},
+  {id:'dex_12',name:'Dumbbell Row',muscles:['Lats','Rear Delt','Biceps'],sw:35,sr:10,gw:65,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+row+form+tutorial'},
+  {id:'dex_13',name:'Barbell Bent-Over Row',muscles:['Lats','Traps','Rear Delt','Biceps'],sw:60,sr:10,gw:115,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+bent+over+row+form+tutorial'},
+  {id:'dex_14',name:'Seated Cable Row',muscles:['Lats','Traps','Rear Delt','Biceps'],sw:50,sr:10,gw:100,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=seated+cable+row+form+tutorial'},
+  {id:'dex_15',name:'Lat Pulldown',muscles:['Lats','Biceps','Rear Delt'],sw:50,sr:10,gw:100,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=lat+pulldown+form+tutorial'},
+  {id:'dex_16',name:'Pull-Up',muscles:['Lats','Rear Delt','Biceps'],sw:0,sr:3,gw:0,gr:8,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=pull+up+form+tutorial'},
+  {id:'dex_17',name:'T-Bar Row',muscles:['Lats','Traps','Rear Delt','Biceps'],sw:45,sr:10,gw:90,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=t+bar+row+form+tutorial'},
+  {id:'dex_18',name:'Face Pull',muscles:['Rear Delt','Traps'],sw:25,sr:15,gw:50,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=face+pull+form+tutorial'},
+  {id:'dex_19',name:'Machine Row',muscles:['Lats','Rear Delt','Biceps'],sw:50,sr:10,gw:100,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=machine+row+form+tutorial'},
+  {id:'dex_20',name:'Hyperextension',muscles:['Lats','Traps','Glutes'],sw:15,sr:15,gw:25,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=hyperextension+back+extension+form+tutorial'},
   // SHOULDERS
-  {id:'dex_21',name:'Barbell Overhead Press',muscles:['Shoulders','Triceps'],youtube:'https://www.youtube.com/results?search_query=barbell+overhead+press+form+tutorial'},
-  {id:'dex_22',name:'Dumbbell Shoulder Press',muscles:['Shoulders','Triceps'],youtube:'https://www.youtube.com/results?search_query=dumbbell+shoulder+press+form+tutorial'},
-  {id:'dex_23',name:'Machine Shoulder Press',muscles:['Shoulders','Triceps'],youtube:'https://www.youtube.com/results?search_query=machine+shoulder+press+form+tutorial'},
-  {id:'dex_24',name:'Dumbbell Lateral Raise',muscles:['Shoulders'],youtube:'https://www.youtube.com/results?search_query=dumbbell+lateral+raise+form+tutorial'},
-  {id:'dex_25',name:'Cable Lateral Raise',muscles:['Shoulders'],youtube:'https://www.youtube.com/results?search_query=cable+lateral+raise+form+tutorial'},
-  {id:'dex_26',name:'Dumbbell Front Raise',muscles:['Shoulders'],youtube:'https://www.youtube.com/results?search_query=dumbbell+front+raise+form+tutorial'},
-  {id:'dex_27',name:'Dumbbell Rear Delt Fly',muscles:['Shoulders','Back'],youtube:'https://www.youtube.com/results?search_query=rear+delt+fly+dumbbell+form+tutorial'},
-  {id:'dex_28',name:'Arnold Press',muscles:['Shoulders','Triceps'],youtube:'https://www.youtube.com/results?search_query=arnold+press+form+tutorial'},
-  {id:'dex_29',name:'Cable Rear Delt Fly',muscles:['Shoulders','Back'],youtube:'https://www.youtube.com/results?search_query=cable+rear+delt+fly+form+tutorial'},
+  {id:'dex_21',name:'Barbell Overhead Press',muscles:['Front Delt','Triceps'],sw:45,sr:10,gw:85,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+overhead+press+form+tutorial'},
+  {id:'dex_22',name:'Dumbbell Shoulder Press',muscles:['Front Delt','Triceps'],sw:20,sr:10,gw:40,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+shoulder+press+form+tutorial'},
+  {id:'dex_23',name:'Machine Shoulder Press',muscles:['Front Delt','Triceps'],sw:40,sr:10,gw:80,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=machine+shoulder+press+form+tutorial'},
+  {id:'dex_24',name:'Dumbbell Lateral Raise',muscles:['Side Delt'],sw:10,sr:15,gw:20,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+lateral+raise+form+tutorial'},
+  {id:'dex_25',name:'Cable Lateral Raise',muscles:['Side Delt'],sw:10,sr:15,gw:20,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+lateral+raise+form+tutorial'},
+  {id:'dex_26',name:'Dumbbell Front Raise',muscles:['Front Delt'],sw:10,sr:12,gw:20,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+front+raise+form+tutorial'},
+  {id:'dex_27',name:'Dumbbell Rear Delt Fly',muscles:['Rear Delt'],sw:10,sr:15,gw:20,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=rear+delt+fly+dumbbell+form+tutorial'},
+  {id:'dex_28',name:'Arnold Press',muscles:['Front Delt','Side Delt','Triceps'],sw:20,sr:10,gw:35,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=arnold+press+form+tutorial'},
+  {id:'dex_29',name:'Cable Rear Delt Fly',muscles:['Rear Delt'],sw:10,sr:15,gw:20,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+rear+delt+fly+form+tutorial'},
   // BICEPS
-  {id:'dex_30',name:'Barbell Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=barbell+curl+form+tutorial'},
-  {id:'dex_31',name:'Dumbbell Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=dumbbell+curl+form+tutorial'},
-  {id:'dex_32',name:'Machine Preacher Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=machine+preacher+curl+form+tutorial'},
-  {id:'dex_33',name:'Hammer Curl',muscles:['Biceps','Forearms'],youtube:'https://www.youtube.com/results?search_query=hammer+curl+form+tutorial'},
-  {id:'dex_34',name:'Cable Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=cable+curl+bicep+form+tutorial'},
-  {id:'dex_35',name:'Concentration Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=concentration+curl+form+tutorial'},
-  {id:'dex_36',name:'Incline Dumbbell Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=incline+dumbbell+curl+form+tutorial'},
-  {id:'dex_37',name:'Barbell Preacher Curl',muscles:['Biceps'],youtube:'https://www.youtube.com/results?search_query=barbell+preacher+curl+form+tutorial'},
+  {id:'dex_30',name:'Barbell Curl',muscles:['Biceps'],sw:30,sr:12,gw:55,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+curl+form+tutorial'},
+  {id:'dex_31',name:'Dumbbell Curl',muscles:['Biceps'],sw:15,sr:12,gw:30,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+curl+form+tutorial'},
+  {id:'dex_32',name:'Machine Preacher Curl',muscles:['Biceps'],sw:25,sr:12,gw:50,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=machine+preacher+curl+form+tutorial'},
+  {id:'dex_33',name:'Hammer Curl',muscles:['Biceps','Forearms'],sw:20,sr:12,gw:35,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=hammer+curl+form+tutorial'},
+  {id:'dex_34',name:'Cable Curl',muscles:['Biceps'],sw:25,sr:12,gw:50,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+curl+bicep+form+tutorial'},
+  {id:'dex_35',name:'Concentration Curl',muscles:['Biceps'],sw:15,sr:12,gw:25,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=concentration+curl+form+tutorial'},
+  {id:'dex_36',name:'Incline Dumbbell Curl',muscles:['Biceps'],sw:15,sr:12,gw:25,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=incline+dumbbell+curl+form+tutorial'},
+  {id:'dex_37',name:'Barbell Preacher Curl',muscles:['Biceps'],sw:30,sr:12,gw:55,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+preacher+curl+form+tutorial'},
   // TRICEPS
-  {id:'dex_38',name:'Barbell Skull Crusher',muscles:['Triceps'],youtube:'https://www.youtube.com/results?search_query=skull+crusher+form+tutorial'},
-  {id:'dex_39',name:'Dumbbell Overhead Tricep Extension',muscles:['Triceps'],youtube:'https://www.youtube.com/results?search_query=overhead+tricep+extension+dumbbell+form+tutorial'},
-  {id:'dex_40',name:'Cable Tricep Pushdown',muscles:['Triceps'],youtube:'https://www.youtube.com/results?search_query=cable+tricep+pushdown+form+tutorial'},
-  {id:'dex_41',name:'Machine Tricep Extension',muscles:['Triceps'],youtube:'https://www.youtube.com/results?search_query=machine+tricep+extension+form+tutorial'},
-  {id:'dex_42',name:'Close-Grip Bench Press',muscles:['Triceps','Chest'],youtube:'https://www.youtube.com/results?search_query=close+grip+bench+press+form+tutorial'},
-  {id:'dex_43',name:'Tricep Dips',muscles:['Triceps','Chest'],youtube:'https://www.youtube.com/results?search_query=tricep+dips+form+tutorial'},
-  {id:'dex_44',name:'Cable Overhead Tricep Extension',muscles:['Triceps'],youtube:'https://www.youtube.com/results?search_query=cable+overhead+tricep+extension+form+tutorial'},
+  {id:'dex_38',name:'Barbell Skull Crusher',muscles:['Triceps'],sw:30,sr:10,gw:55,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=skull+crusher+form+tutorial'},
+  {id:'dex_39',name:'Dumbbell Overhead Tricep Extension',muscles:['Triceps'],sw:30,sr:12,gw:55,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=overhead+tricep+extension+dumbbell+form+tutorial'},
+  {id:'dex_40',name:'Cable Tricep Pushdown',muscles:['Triceps'],sw:35,sr:12,gw:65,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+tricep+pushdown+form+tutorial'},
+  {id:'dex_41',name:'Machine Tricep Extension',muscles:['Triceps'],sw:35,sr:12,gw:70,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=machine+tricep+extension+form+tutorial'},
+  {id:'dex_42',name:'Close-Grip Bench Press',muscles:['Triceps','Chest','Front Delt'],sw:50,sr:10,gw:95,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=close+grip+bench+press+form+tutorial'},
+  {id:'dex_43',name:'Tricep Dips',muscles:['Triceps','Chest'],sw:0,sr:6,gw:0,gr:12,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=tricep+dips+form+tutorial'},
+  {id:'dex_44',name:'Cable Overhead Tricep Extension',muscles:['Triceps'],sw:30,sr:12,gw:60,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+overhead+tricep+extension+form+tutorial'},
   // LEGS / QUADS
-  {id:'dex_45',name:'Barbell Squat',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=barbell+squat+form+tutorial'},
-  {id:'dex_46',name:'Dumbbell Goblet Squat',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=goblet+squat+form+tutorial'},
-  {id:'dex_47',name:'Leg Press Machine',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=leg+press+machine+form+tutorial'},
-  {id:'dex_48',name:'Leg Extension Machine',muscles:['Legs'],youtube:'https://www.youtube.com/results?search_query=leg+extension+machine+form+tutorial'},
-  {id:'dex_49',name:'Hack Squat Machine',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=hack+squat+machine+form+tutorial'},
-  {id:'dex_50',name:'Barbell Lunge',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=barbell+lunge+form+tutorial'},
-  {id:'dex_51',name:'Dumbbell Lunge',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=dumbbell+lunge+form+tutorial'},
-  {id:'dex_52',name:'Bulgarian Split Squat',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=bulgarian+split+squat+form+tutorial'},
-  {id:'dex_53',name:'Smith Machine Squat',muscles:['Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=smith+machine+squat+form+tutorial'},
+  {id:'dex_45',name:'Barbell Squat',muscles:['Quads','Glutes','Hamstrings'],sw:80,sr:10,gw:155,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+squat+form+tutorial'},
+  {id:'dex_46',name:'Dumbbell Goblet Squat',muscles:['Quads','Glutes'],sw:35,sr:12,gw:65,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=goblet+squat+form+tutorial'},
+  {id:'dex_47',name:'Leg Press Machine',muscles:['Quads','Glutes'],sw:115,sr:10,gw:225,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=leg+press+machine+form+tutorial'},
+  {id:'dex_48',name:'Leg Extension Machine',muscles:['Quads'],sw:40,sr:12,gw:80,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=leg+extension+machine+form+tutorial'},
+  {id:'dex_49',name:'Hack Squat Machine',muscles:['Quads','Glutes'],sw:80,sr:10,gw:155,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=hack+squat+machine+form+tutorial'},
+  {id:'dex_50',name:'Barbell Lunge',muscles:['Quads','Glutes','Hamstrings'],sw:35,sr:10,gw:65,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+lunge+form+tutorial'},
+  {id:'dex_51',name:'Dumbbell Lunge',muscles:['Quads','Glutes','Hamstrings'],sw:20,sr:10,gw:35,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+lunge+form+tutorial'},
+  {id:'dex_52',name:'Bulgarian Split Squat',muscles:['Quads','Glutes','Hamstrings'],sw:20,sr:10,gw:40,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=bulgarian+split+squat+form+tutorial'},
+  {id:'dex_53',name:'Smith Machine Squat',muscles:['Quads','Glutes'],sw:70,sr:10,gw:135,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=smith+machine+squat+form+tutorial'},
   // HAMSTRINGS
-  {id:'dex_54',name:'Barbell Romanian Deadlift',muscles:['Hamstrings','Glutes','Back'],youtube:'https://www.youtube.com/results?search_query=romanian+deadlift+form+tutorial'},
-  {id:'dex_55',name:'Dumbbell Romanian Deadlift',muscles:['Hamstrings','Glutes'],youtube:'https://www.youtube.com/results?search_query=dumbbell+romanian+deadlift+form+tutorial'},
-  {id:'dex_56',name:'Leg Curl Machine',muscles:['Hamstrings'],youtube:'https://www.youtube.com/results?search_query=leg+curl+machine+form+tutorial'},
-  {id:'dex_57',name:'Nordic Hamstring Curl',muscles:['Hamstrings'],youtube:'https://www.youtube.com/results?search_query=nordic+hamstring+curl+form+tutorial'},
+  {id:'dex_54',name:'Barbell Romanian Deadlift',muscles:['Hamstrings','Glutes','Lats'],sw:70,sr:10,gw:135,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=romanian+deadlift+form+tutorial'},
+  {id:'dex_55',name:'Dumbbell Romanian Deadlift',muscles:['Hamstrings','Glutes'],sw:30,sr:10,gw:55,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+romanian+deadlift+form+tutorial'},
+  {id:'dex_56',name:'Leg Curl Machine',muscles:['Hamstrings'],sw:35,sr:12,gw:65,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=leg+curl+machine+form+tutorial'},
+  {id:'dex_57',name:'Nordic Hamstring Curl',muscles:['Hamstrings'],sw:0,sr:3,gw:0,gr:8,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=nordic+hamstring+curl+form+tutorial'},
   // CALVES
-  {id:'dex_58',name:'Standing Calf Raise Machine',muscles:['Calves'],youtube:'https://www.youtube.com/results?search_query=standing+calf+raise+machine+form+tutorial'},
-  {id:'dex_59',name:'Seated Calf Raise',muscles:['Calves'],youtube:'https://www.youtube.com/results?search_query=seated+calf+raise+form+tutorial'},
-  {id:'dex_60',name:'Dumbbell Calf Raise',muscles:['Calves'],youtube:'https://www.youtube.com/results?search_query=dumbbell+calf+raise+form+tutorial'},
+  {id:'dex_58',name:'Standing Calf Raise Machine',muscles:['Calves'],sw:60,sr:15,gw:120,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=standing+calf+raise+machine+form+tutorial'},
+  {id:'dex_59',name:'Seated Calf Raise',muscles:['Calves'],sw:45,sr:15,gw:90,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=seated+calf+raise+form+tutorial'},
+  {id:'dex_60',name:'Dumbbell Calf Raise',muscles:['Calves'],sw:30,sr:15,gw:55,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=dumbbell+calf+raise+form+tutorial'},
   // GLUTES
-  {id:'dex_61',name:'Barbell Hip Thrust',muscles:['Glutes','Hamstrings'],youtube:'https://www.youtube.com/results?search_query=barbell+hip+thrust+form+tutorial'},
-  {id:'dex_62',name:'Machine Hip Thrust',muscles:['Glutes'],youtube:'https://www.youtube.com/results?search_query=machine+hip+thrust+form+tutorial'},
-  {id:'dex_63',name:'Cable Glute Kickback',muscles:['Glutes'],youtube:'https://www.youtube.com/results?search_query=cable+glute+kickback+form+tutorial'},
-  {id:'dex_64',name:'Sumo Deadlift',muscles:['Glutes','Legs','Back'],youtube:'https://www.youtube.com/results?search_query=sumo+deadlift+form+tutorial'},
-  {id:'dex_65',name:'Cable Pull-Through',muscles:['Glutes','Hamstrings'],youtube:'https://www.youtube.com/results?search_query=cable+pull+through+form+tutorial'},
+  {id:'dex_61',name:'Barbell Hip Thrust',muscles:['Glutes','Hamstrings'],sw:50,sr:10,gw:95,gr:10,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=barbell+hip+thrust+form+tutorial'},
+  {id:'dex_62',name:'Machine Hip Thrust',muscles:['Glutes'],sw:50,sr:12,gw:100,gr:12,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=machine+hip+thrust+form+tutorial'},
+  {id:'dex_63',name:'Cable Glute Kickback',muscles:['Glutes'],sw:15,sr:15,gw:30,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+glute+kickback+form+tutorial'},
+  {id:'dex_64',name:'Sumo Deadlift',muscles:['Glutes','Quads','Lats'],sw:80,sr:8,gw:155,gr:8,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=sumo+deadlift+form+tutorial'},
+  {id:'dex_65',name:'Cable Pull-Through',muscles:['Glutes','Hamstrings'],sw:25,sr:15,gw:50,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+pull+through+form+tutorial'},
   // ABS
-  {id:'dex_66',name:'Crunch',muscles:['Abs'],youtube:'https://www.youtube.com/results?search_query=crunch+ab+proper+form+tutorial'},
-  {id:'dex_67',name:'Cable Crunch',muscles:['Abs'],youtube:'https://www.youtube.com/results?search_query=cable+crunch+form+tutorial'},
-  {id:'dex_68',name:'Plank',muscles:['Abs','Shoulders'],youtube:'https://www.youtube.com/results?search_query=plank+proper+form+tutorial'},
-  {id:'dex_69',name:'Hanging Leg Raise',muscles:['Abs'],youtube:'https://www.youtube.com/results?search_query=hanging+leg+raise+form+tutorial'},
-  {id:'dex_70',name:'Ab Wheel Rollout',muscles:['Abs','Shoulders'],youtube:'https://www.youtube.com/results?search_query=ab+wheel+rollout+form+tutorial'},
-  {id:'dex_71',name:'Russian Twist',muscles:['Abs'],youtube:'https://www.youtube.com/results?search_query=russian+twist+form+tutorial'},
-  {id:'dex_72',name:'Decline Sit-Up',muscles:['Abs'],youtube:'https://www.youtube.com/results?search_query=decline+sit+up+form+tutorial'},
-  {id:'dex_73',name:'Leg Raise',muscles:['Abs'],youtube:'https://www.youtube.com/results?search_query=leg+raise+abs+form+tutorial'},
+  {id:'dex_66',name:'Crunch',muscles:['Abs'],sw:0,sr:15,gw:0,gr:25,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=crunch+ab+proper+form+tutorial'},
+  {id:'dex_67',name:'Cable Crunch',muscles:['Abs'],sw:25,sr:15,gw:50,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+crunch+form+tutorial'},
+  {id:'dex_68',name:'Plank',muscles:['Abs','Front Delt'],sw:0,sr:30,gw:0,gr:60,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=plank+proper+form+tutorial'},
+  {id:'dex_69',name:'Hanging Leg Raise',muscles:['Abs'],sw:0,sr:6,gw:0,gr:12,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=hanging+leg+raise+form+tutorial'},
+  {id:'dex_70',name:'Ab Wheel Rollout',muscles:['Abs','Lats','Front Delt'],sw:0,sr:5,gw:0,gr:10,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=ab+wheel+rollout+form+tutorial'},
+  {id:'dex_71',name:'Russian Twist',muscles:['Abs'],sw:10,sr:15,gw:20,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=russian+twist+form+tutorial'},
+  {id:'dex_72',name:'Decline Sit-Up',muscles:['Abs'],sw:0,sr:12,gw:0,gr:20,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=decline+sit+up+form+tutorial'},
+  {id:'dex_73',name:'Leg Raise',muscles:['Abs'],sw:0,sr:8,gw:0,gr:15,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=leg+raise+abs+form+tutorial'},
   // CARDIO
-  {id:'dex_74',name:'Treadmill Run',muscles:['Cardio','Legs'],youtube:'https://www.youtube.com/results?search_query=treadmill+running+form+tutorial'},
-  {id:'dex_75',name:'Rowing Machine',muscles:['Cardio','Back','Legs'],youtube:'https://www.youtube.com/results?search_query=rowing+machine+form+tutorial'},
-  {id:'dex_76',name:'Stationary Bike',muscles:['Cardio','Legs'],youtube:'https://www.youtube.com/results?search_query=stationary+bike+form+tutorial'},
-  {id:'dex_77',name:'Jump Rope',muscles:['Cardio','Calves'],youtube:'https://www.youtube.com/results?search_query=jump+rope+form+tutorial'},
-  {id:'dex_78',name:'Stair Climber',muscles:['Cardio','Legs','Glutes'],youtube:'https://www.youtube.com/results?search_query=stair+climber+form+tutorial'},
-  {id:'dex_79',name:'Elliptical',muscles:['Cardio','Legs'],youtube:'https://www.youtube.com/results?search_query=elliptical+form+tutorial'},
-  {id:'dex_80',name:'Battle Ropes',muscles:['Cardio','Shoulders'],youtube:'https://www.youtube.com/results?search_query=battle+ropes+form+tutorial'},
+  {id:'dex_74',name:'Treadmill Run',muscles:['Cardio','Quads','Hamstrings','Calves'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=treadmill+running+form+tutorial'},
+  {id:'dex_75',name:'Rowing Machine',muscles:['Cardio','Lats','Traps','Quads'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=rowing+machine+form+tutorial'},
+  {id:'dex_76',name:'Stationary Bike',muscles:['Cardio','Quads','Hamstrings'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=stationary+bike+form+tutorial'},
+  {id:'dex_77',name:'Jump Rope',muscles:['Cardio','Calves','Quads'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=jump+rope+form+tutorial'},
+  {id:'dex_78',name:'Stair Climber',muscles:['Cardio','Quads','Glutes','Calves'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=stair+climber+form+tutorial'},
+  {id:'dex_79',name:'Elliptical',muscles:['Cardio','Quads','Hamstrings'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=elliptical+form+tutorial'},
+  {id:'dex_80',name:'Battle Ropes',muscles:['Cardio','Front Delt','Traps','Biceps'],sw:0,sr:1,gw:0,gr:1,sets:1,unit:'bw',youtube:'https://www.youtube.com/results?search_query=battle+ropes+form+tutorial'},
 ];
 
 // STATE
@@ -3056,31 +3065,33 @@ function rDash(){
 // ─────────────────────────── MUSCLE SKELETON ─────────────────────────────────
 // Overlay regions as % of image (1206×1198 source image, front left / back right)
 const SKEL_REGIONS=[
-  // FRONT VIEW
-  {m:'Chest',      lbl:'Chest',         x:11.6, y:18.4, w:24,   h:10.8, rx:'50%'},
-  {m:'Abs',        lbl:'Abs',           x:14.8, y:29.2, w:17.5, h:19.5, rx:'10px'},
-  {m:'Shoulders',  lbl:'Front Delt (L)',x:5.6,  y:16.7, w:6.2,  h:7.5,  rx:'50%'},
-  {m:'Shoulders',  lbl:'Front Delt (R)',x:31.5, y:16.7, w:6.2,  h:7.5,  rx:'50%'},
-  {m:'Biceps',     lbl:'Biceps (L)',    x:4.5,  y:24.2, w:5.5,  h:15,   rx:'50%'},
-  {m:'Biceps',     lbl:'Biceps (R)',    x:33.2, y:24.2, w:5.5,  h:15,   rx:'50%'},
-  {m:'Forearms',   lbl:'Forearm (L)',   x:4.2,  y:39.2, w:5.2,  h:12.5, rx:'50%'},
-  {m:'Forearms',   lbl:'Forearm (R)',   x:33.5, y:39.2, w:5.2,  h:12.5, rx:'50%'},
-  {m:'Legs',       lbl:'Quad (L)',      x:13.2, y:50.1, w:8,    h:17.5, rx:'50%'},
-  {m:'Legs',       lbl:'Quad (R)',      x:21.8, y:50.1, w:8,    h:17.5, rx:'50%'},
-  {m:'Calves',     lbl:'Calves (L)',    x:13.2, y:68,   w:7,    h:12.5, rx:'50%'},
-  {m:'Calves',     lbl:'Calves (R)',    x:22,   y:68,   w:7,    h:12.5, rx:'50%'},
-  // BACK VIEW
-  {m:'Back',       lbl:'Traps',         x:59.7, y:14.2, w:28,   h:9.5,  rx:'50%'},
-  {m:'Back',       lbl:'Lats',          x:57,   y:23,   w:34,   h:18,   rx:'10px'},
-  {m:'Shoulders',  lbl:'Rear Delt (L)', x:54.2, y:15,   w:6.5,  h:8,    rx:'50%'},
-  {m:'Shoulders',  lbl:'Rear Delt (R)', x:87.8, y:15,   w:6.5,  h:8,    rx:'50%'},
-  {m:'Triceps',    lbl:'Triceps (L)',   x:53.2, y:23,   w:5.5,  h:15,   rx:'50%'},
-  {m:'Triceps',    lbl:'Triceps (R)',   x:90,   y:23,   w:5.5,  h:15,   rx:'50%'},
-  {m:'Glutes',     lbl:'Glutes',        x:58,   y:41.7, w:32.5, h:11,   rx:'50%'},
-  {m:'Hamstrings', lbl:'Hamstring (L)', x:57.2, y:52.5, w:10,   h:15.5, rx:'50%'},
-  {m:'Hamstrings', lbl:'Hamstring (R)', x:68,   y:52.5, w:10,   h:15.5, rx:'50%'},
-  {m:'Calves',     lbl:'Calves (L)',    x:57.5, y:68.5, w:9.5,  h:12.5, rx:'50%'},
-  {m:'Calves',     lbl:'Calves (R)',    x:68,   y:68.5, w:9.5,  h:12.5, rx:'50%'},
+  // FRONT VIEW — corrected coordinates
+  {grp:'Chest',    m:'Chest',      lbl:'Chest',           x:14,  y:17,   w:20,  h:9,    rx:'40%'},
+  {grp:'Shoulders',m:'Front Delt', lbl:'Front Delt (L)',  x:7,   y:14,   w:7,   h:8,    rx:'50%'},
+  {grp:'Shoulders',m:'Front Delt', lbl:'Front Delt (R)',  x:34,  y:14,   w:7,   h:8,    rx:'50%'},
+  {grp:'Shoulders',m:'Side Delt',  lbl:'Side Delt (L)',   x:5,   y:14,   w:3,   h:7,    rx:'50%'},
+  {grp:'Shoulders',m:'Side Delt',  lbl:'Side Delt (R)',   x:40,  y:14,   w:3,   h:7,    rx:'50%'},
+  {grp:'Biceps',   m:'Biceps',     lbl:'Biceps (L)',      x:5,   y:22,   w:5.5, h:14,   rx:'50%'},
+  {grp:'Biceps',   m:'Biceps',     lbl:'Biceps (R)',      x:37,  y:22,   w:5.5, h:14,   rx:'50%'},
+  {grp:'Forearms', m:'Forearms',   lbl:'Forearm (L)',     x:3,   y:37,   w:5,   h:14,   rx:'50%'},
+  {grp:'Forearms', m:'Forearms',   lbl:'Forearm (R)',     x:40,  y:37,   w:5,   h:14,   rx:'50%'},
+  {grp:'Abs',      m:'Abs',        lbl:'Abs',             x:15,  y:26,   w:18,  h:20,   rx:'10px'},
+  {grp:'Legs',     m:'Quads',      lbl:'Quad (L)',        x:13,  y:49,   w:9,   h:17,   rx:'50%'},
+  {grp:'Legs',     m:'Quads',      lbl:'Quad (R)',        x:26,  y:49,   w:9,   h:17,   rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (L)',        x:14,  y:71,   w:6.5, h:16,   rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (R)',        x:27,  y:71,   w:6.5, h:16,   rx:'50%'},
+  // BACK VIEW — corrected coordinates
+  {grp:'Back',     m:'Traps',      lbl:'Traps',           x:62,  y:13,   w:24,  h:9,    rx:'50%'},
+  {grp:'Shoulders',m:'Rear Delt',  lbl:'Rear Delt (L)',   x:54,  y:14,   w:8,   h:8,    rx:'50%'},
+  {grp:'Shoulders',m:'Rear Delt',  lbl:'Rear Delt (R)',   x:86,  y:14,   w:8,   h:8,    rx:'50%'},
+  {grp:'Back',     m:'Lats',       lbl:'Lats',            x:58,  y:22,   w:32,  h:20,   rx:'10px'},
+  {grp:'Triceps',  m:'Triceps',    lbl:'Triceps (L)',     x:53,  y:22,   w:5,   h:15,   rx:'50%'},
+  {grp:'Triceps',  m:'Triceps',    lbl:'Triceps (R)',     x:90,  y:22,   w:5,   h:15,   rx:'50%'},
+  {grp:'Legs',     m:'Glutes',     lbl:'Glutes',          x:61,  y:45,   w:26,  h:11,   rx:'50%'},
+  {grp:'Legs',     m:'Hamstrings', lbl:'Hamstring (L)',   x:61,  y:56,   w:10,  h:16,   rx:'50%'},
+  {grp:'Legs',     m:'Hamstrings', lbl:'Hamstring (R)',   x:77,  y:56,   w:10,  h:16,   rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (L)',        x:62,  y:73,   w:9,   h:14,   rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (R)',        x:77,  y:73,   w:9,   h:14,   rx:'50%'},
 ];
 
 function skelOpacity(sets){
@@ -3113,13 +3124,16 @@ function rMuscleSkeleton(){
   const overlayHTML=SKEL_REGIONS.map((r,i)=>{
     const sets=muscleSets[r.m]||0;
     const op=skelOpacity(sets);
-    const mc=FIT_MUSCLE_COLORS[r.m]||FIT_MUSCLE_COLORS['Other'];
-    return `<div class="skel-ov" id="skov_${i}" data-muscle="${r.m}" data-base-op="${op}" style="left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%;border-radius:${r.rx};background:${mc.c};opacity:${op};transition:opacity .12s,filter .12s;pointer-events:none;"></div>`;
+    const mc=FIT_MUSCLE_COLORS[r.m]||FIT_MUSCLE_COLORS[r.grp]||FIT_MUSCLE_COLORS['Other'];
+    return `<div class="skel-ov" id="skov_${i}" data-muscle="${r.m}" data-grp="${r.grp}" data-base-op="${op}" style="left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%;border-radius:${r.rx};background:${mc.c};opacity:${op};transition:opacity .12s;pointer-events:none;"></div>`;
   }).join('');
 
-  const activeMs=Object.entries(muscleSets).filter(([m,s])=>s>0).sort((a,b)=>b[1]-a[1]);
-  const legendHTML=activeMs.length
-    ?`<div class="skel-legend">${activeMs.map(([m,s])=>{const mc=FIT_MUSCLE_COLORS[m]||FIT_MUSCLE_COLORS['Other'];return`<span class="skel-legend-item" style="background:${mc.bg};color:${mc.c};">${esc(m)}: ${s} set${s!==1?'s':''}</span>`;}).join('')}</div>`
+  // Legend: group sub-muscles under their grp
+  const grpSets={};
+  SKEL_REGIONS.forEach(r=>{const s=muscleSets[r.m]||0;if(s>0){grpSets[r.grp]=(grpSets[r.grp]||0)+s;}});
+  const activeMsForLegend=Object.entries(grpSets).sort((a,b)=>b[1]-a[1]);
+  const legendHTML=activeMsForLegend.length
+    ?`<div class="skel-legend">${activeMsForLegend.map(([g,s])=>{const mc=FIT_MUSCLE_COLORS[g]||FIT_MUSCLE_COLORS['Other'];return`<span class="skel-legend-item" style="background:${mc.bg};color:${mc.c};">${esc(g)}: ${s} set${s!==1?'s':''}</span>`;}).join('')}</div>`
     :`<div style="font-size:12px;color:var(--text-faint);margin-top:8px;">No workout sessions in the last 7 days.</div>`;
 
   el.innerHTML=`<div class="skel-wrap" style="cursor:crosshair;">
@@ -3150,22 +3164,27 @@ function rMuscleSkeleton(){
       const yp=(e.clientY-rect.top)/rect.height*100;
       let found=null;
       for(const r of SKEL_REGIONS){if(xp>=r.x&&xp<=r.x+r.w&&yp>=r.y&&yp<=r.y+r.h){found=r;break;}}
-      const newM=found?found.m:null;
-      if(newM!==hovM){
+      const newGrp=found?found.grp:null;
+      if(newGrp!==hovM){
         if(hovM){
-          wrap.querySelectorAll(`.skel-ov[data-muscle="${hovM}"]`).forEach(ov=>{
+          wrap.querySelectorAll(`.skel-ov[data-grp="${hovM}"]`).forEach(ov=>{
             ov.style.opacity=ov.getAttribute('data-base-op');
           });
         }
-        hovM=newM;
-        if(newM){
-          wrap.querySelectorAll(`.skel-ov[data-muscle="${newM}"]`).forEach(ov=>{
+        hovM=newGrp;
+        if(newGrp){
+          wrap.querySelectorAll(`.skel-ov[data-grp="${newGrp}"]`).forEach(ov=>{
             ov.style.opacity='0.82';
           });
-          const sets=(muscleSets[newM]||0);
-          const lastDate=muscleLastDate[newM];
-          const dateStr=lastDate?new Date(lastDate+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'—';
-          tip.innerHTML=`<strong>${found.lbl}</strong><br>${sets?sets+' set'+(sets!==1?'s':''):'Not trained'} this week<br>Last: ${dateStr}`;
+          // Tooltip: per sub-muscle breakdown
+          const subMuscles=[...new Set(SKEL_REGIONS.filter(r=>r.grp===newGrp).map(r=>r.m))];
+          const lines=subMuscles.map(sm=>{
+            const sets=(muscleSets[sm]||0);
+            const lastDate=muscleLastDate[sm];
+            const dateStr=lastDate?new Date(lastDate+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Not trained';
+            return`<div><strong>${sm}</strong>: ${sets?sets+' sets this week':''} · ${dateStr}</div>`;
+          }).join('');
+          tip.innerHTML=`<div style="font-weight:600;margin-bottom:4px;">${newGrp}</div>${lines}`;
           tip.style.display='block';
         } else {
           tip.style.display='none';
@@ -3181,7 +3200,7 @@ function rMuscleSkeleton(){
   wrap.addEventListener('mouseleave',function(){
     if(rafId)cancelAnimationFrame(rafId);
     if(hovM){
-      wrap.querySelectorAll(`.skel-ov[data-muscle="${hovM}"]`).forEach(ov=>{
+      wrap.querySelectorAll(`.skel-ov[data-grp="${hovM}"]`).forEach(ov=>{
         ov.style.opacity=ov.getAttribute('data-base-op');
       });
       hovM=null;
@@ -3967,7 +3986,7 @@ function fitTodayName(){return FIT_DAYS[new Date().getDay()===0?6:new Date().get
 // ── TAB SWITCHING ──
 function setFitTab(t){
   fitTab=t;
-  ['dash','today','running','schedule','groups','exercises','history'].forEach(n=>{
+  ['dash','today','running','schedule','groups','exercises','history','targets'].forEach(n=>{
     const btn=document.getElementById('ft-'+n);
     const panel=document.getElementById('fit-'+n+'-panel');
     if(btn)btn.classList.toggle('a',n===t);
@@ -3980,6 +3999,7 @@ function setFitTab(t){
   else if(t==='groups')rFitGroups();
   else if(t==='exercises')rFitExercises();
   else if(t==='history')rFitHistory();
+  else if(t==='targets')rFitTargets();
 }
 
 function rFitness(){setFitTab(fitTab);}
@@ -3999,7 +4019,7 @@ function rFitToday(){
       html+=`<div style="margin-bottom:1rem;">
         <span class="fit-rec-badge">💡 Recommended: ${esc(rec.label)} <span style="opacity:.7;">${esc(rec.sub)}</span></span>
         ${rec.group?`<button class="fit-pill-btn" onclick="fitStartGroupWorkout('${rec.group}')" style="width:100%;margin-top:8px;">▶ Start ${esc(rec.label)}</button>`:''}
-        ${rec.type==='cardio'?`<button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="width:100%;margin-top:8px;">🏃 Log Run / Cardio</button>`:''}
+        ${rec.type==='cardio'?`<button class="fit-pill-btn" onclick="fitOpenCardioModal()" style="width:100%;margin-top:8px;">🏃 Log Run</button><button class="fit-ghost-btn" onclick="fitScheduleRun(fitTodayName())" style="width:100%;margin-top:6px;font-size:12px;">📅 Schedule next run session</button>`:''}
       </div>`;
     } else if(rec&&rec.type==='rest'){
       html+=`<div style="background:var(--surface2);border-radius:var(--r);padding:12px 16px;margin-bottom:1rem;font-size:13px;color:var(--text-muted);">😴 ${esc(rec.label)} — ${esc(rec.sub)}</div>`;
@@ -4012,9 +4032,15 @@ function rFitToday(){
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:8px;">${esc(g.name)} — ${g.exerciseIds.length} exercises</div>
           ${g.exerciseIds.map(exId=>{
             const ex=fitExercises.find(x=>x.id===exId);if(!ex)return'';
-            const target=ex.targetWeight?`<span style="color:var(--text-faint);font-size:11px;">${ex.targetWeight}${ex.targetWeightUnit||'lbs'} × ${ex.targetReps||8} reps</span>`:'<span style="font-size:11px;color:var(--text-faint);">No target set</span>';
+            const isBW=(ex.unit||'lbs')==='bw';
+            const w=ex.targetWeight||ex.sw||0;
+            const r=ex.targetReps||ex.sr||8;
+            const s=ex.defaultSets||ex.sets||3;
             const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--surface2);color:var(--text-faint);">${m}</span>`).join(' ');
-            return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;">${esc(ex.name)}</div><div style="margin-top:2px;">${muscles}</div></div>${target}</div>`;
+            return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);">
+              <div><div style="font-size:13px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:2px;">${muscles}</div></div>
+              <div style="text-align:right;">${isBW?`<div style="font-size:12px;font-weight:500;color:var(--accent);">BW × ${r} reps</div>`:`<div style="font-size:12px;font-weight:500;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:11px;color:var(--text-faint);">${s} sets</div></div>
+            </div>`;
           }).join('')}
         </div>`;
       }
@@ -4410,8 +4436,12 @@ function rFitSchedule(){
       if(g&&g.exerciseIds&&g.exerciseIds.length){
         const exList=g.exerciseIds.slice(0,8).map(exId=>{
           const ex=fitExercises.find(x=>x.id===exId);if(!ex)return'';
-          const target=ex.targetWeight?`${ex.targetWeight}${ex.targetWeightUnit||'lbs'} × ${ex.targetReps||8}`:'';
-          return`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">${esc(ex.name)}</span>${target?`<span style="color:var(--text-faint);">${target}</span>`:''}</div>`;
+          const isBW=(ex.unit||'lbs')==='bw';
+          const w=ex.targetWeight||ex.sw||0;
+          const r=ex.targetReps||ex.sr||8;
+          const s=ex.defaultSets||ex.sets||3;
+          const target=isBW?`BW × ${r} reps × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
+          return`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">${esc(ex.name)}</span><span style="color:var(--text-faint);font-size:11px;">${target}</span></div>`;
         }).join('');
         exercisePreview=`<details style="margin-top:8px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;">${g.exerciseIds.length} exercises ▸</summary><div style="margin-top:6px;">${exList}</div></details>`;
       }
@@ -4426,9 +4456,21 @@ function rFitSchedule(){
         ${daysSince}
         ${isToday?`<span style="font-size:10px;background:var(--accent);color:#F5F3EE;padding:2px 7px;border-radius:10px;">TODAY</span>`:''}
         ${plan&&plan.group?`<button class="fit-ghost-btn" onclick="fitScheduleDay(${dowIdx})" style="font-size:11px;padding:3px 8px;">📅 Schedule</button>`:''}
-        ${plan&&plan.type==='cardio'?`<button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:11px;padding:3px 8px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Log</button>`:''}
+        ${plan&&plan.type==='cardio'?`<button class="fit-ghost-btn" onclick="fitOpenCardioModal()" style="font-size:11px;padding:3px 8px;color:#c0392b;border-color:rgba(192,57,43,.3);">🏃 Log</button><button class="fit-ghost-btn" onclick="fitScheduleRun('${day}')" style="font-size:11px;padding:3px 8px;">📅 Run</button>`:''}
       </div>
       ${exercisePreview}
+      ${(()=>{
+        if(!plan||plan.type!=='cardio')return'';
+        const sIdx=Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1);
+        const rs=FIT_RUN_PLAN[sIdx];if(!rs)return'';
+        const intervals=rs.intervals.map(iv=>{
+          const paceStr=iv.pace+'km/h';
+          const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';
+          const col=iv.t==='run'?'#c0392b':'#219150';
+          return`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.05);color:${col};">${iv.t==='run'?'Run':'Walk'} ${durStr} @ ${paceStr}</span>`;
+        }).join(' ');
+        return`<details style="margin-top:8px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;list-style:none;">🏃 Session ${sIdx+1}: ${rs.wLabel} ▸</summary><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${intervals}</div></details>`;
+      })()}
     </div>`;
   }).join('');
   const toggleHTML=`<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.75rem;">Schedule</div>
@@ -4464,6 +4506,17 @@ function fitScheduleDay(dowIdx){
   } else {
     showToast(`Already scheduled for ${dayName}s`);
   }
+}
+
+function fitScheduleRun(dayName){
+  if(!dayName)dayName=fitTodayName();
+  const sessionIdx=Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1);
+  if(!fitSchedule[dayName])fitSchedule[dayName]=[];
+  fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='run');
+  fitSchedule[dayName].push({type:'run',planSessionIdx:sessionIdx});
+  save();
+  showToast(`Run Session ${sessionIdx+1} scheduled for ${dayName}s`);
+  rFitToday();
 }
 
 function fitRenderScheduleWeek(){
@@ -5732,6 +5785,82 @@ function fitGetRecommendation(){
   return{label:plan.label,sub:recov,type:plan.type,group:plan.group,muscles:plan.muscles,days:maxDays};
 }
 
+// ─────────────────────────── TARGETS TAB ─────────────────────────────────────
+function rFitTargets(){
+  const el=document.getElementById('fit-targets-panel');if(!el)return;
+  // Group exercises by primary muscle, exclude cardio
+  const muscleGroups={};
+  fitExercises.filter(ex=>ex.gw||ex.goalWeight||ex.gr||ex.goalReps).forEach(ex=>{
+    if(!ex.muscles||!ex.muscles.length)return;
+    const grp=ex.muscles[0];
+    if(grp==='Cardio')return;
+    if(!muscleGroups[grp])muscleGroups[grp]=[];
+    muscleGroups[grp].push(ex);
+  });
+  // Per-muscle-group average progress
+  const grpProgress={};
+  Object.entries(muscleGroups).forEach(([grp,exes])=>{
+    const vals=exes.map(ex=>{
+      const isBW=(ex.unit||'lbs')==='bw';
+      if(isBW){
+        const goal=ex.goalReps||ex.gr||0;
+        return goal?Math.min(100,Math.round((ex.targetReps||ex.sr||0)/goal*100)):0;
+      }
+      const goal=ex.goalWeight||ex.gw||0;
+      return goal?Math.min(100,Math.round((ex.targetWeight||ex.sw||0)/goal*100)):0;
+    });
+    grpProgress[grp]=Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+  });
+  const sortedGrps=Object.entries(grpProgress).sort((a,b)=>a[1]-b[1]);
+  const grpCards=sortedGrps.map(([grp,pct])=>{
+    const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
+    const flag=pct<40?' ⚠️':'';
+    return`<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:500;">${esc(grp)}</span>
+        <span style="font-size:11px;color:${color};font-weight:600;">${pct}%${flag}</span>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width .4s;"></div>
+      </div>
+    </div>`;
+  }).join('');
+  const exRows=fitExercises.filter(ex=>(ex.gw||ex.goalWeight||ex.gr||ex.goalReps)).filter(ex=>!ex.muscles||ex.muscles[0]!=='Cardio').map(ex=>{
+    const isBW=(ex.unit||'lbs')==='bw';
+    const current=isBW?(ex.targetReps||ex.sr||0):(ex.targetWeight||ex.sw||0);
+    const goal=isBW?(ex.goalReps||ex.gr||0):(ex.goalWeight||ex.gw||0);
+    if(!goal)return'';
+    const pct=Math.min(100,Math.round(current/goal*100));
+    const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
+    return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div>
+          <div style="font-size:13px;">${esc(ex.name)}</div>
+          <div style="font-size:10px;color:var(--text-faint);">${(ex.muscles||[]).slice(0,3).join(' · ')}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;">
+          <div style="color:${color};font-weight:500;">${isBW?current+' reps':current+' lbs'} → ${isBW?goal+' reps':goal+' lbs'}</div>
+          <div style="color:var(--text-faint);">${pct}%</div>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;"></div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`
+  <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.25rem;">Targets</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">3-month goals at 85 kg · 20% BF. Progress tracks current working weight vs goal.</div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
+    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em;">By Muscle Group — Imbalance View</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">${grpCards||'<div style="font-size:13px;color:var(--text-faint);">No targets set. Load default exercises first.</div>'}</div>
+  </div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
+    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">All Exercises</div>
+    ${exRows||'<div style="font-size:13px;color:var(--text-faint);">No exercises with targets found.</div>'}
+  </div>`;
+}
+
 // ─────────────────────────── DASHBOARD TAB ───────────────────────────────────
 function rFitDash(){
   const el=document.getElementById('fit-dash-panel');
@@ -5905,11 +6034,24 @@ function applyData(d){
       if(e.consecutiveMaxReps===undefined)e.consecutiveMaxReps=0;
       return e;
     });
+    // Seed starter/goal weights from defaults for any exercise not yet set
+    fitExercises.forEach(ex=>{
+      const def=FIT_DEFAULT_EXERCISES.find(d=>d.id===ex.id);
+      if(!def)return;
+      if(!ex.targetWeight&&def.sw){ex.targetWeight=def.sw;ex.targetWeightUnit=def.unit||'lbs';}
+      if(!ex.targetReps&&def.sr){ex.targetReps=def.sr;}
+      if(!ex.goalWeight&&def.gw){ex.goalWeight=def.gw;}
+      if(!ex.goalReps&&def.gr){ex.goalReps=def.gr;}
+      if(!ex.defaultSets&&def.sets){ex.defaultSets=def.sets;}
+      if(!ex.unit&&def.unit){ex.unit=def.unit;}
+      if(!ex.sw&&def.sw){ex.sw=def.sw;}
+      if(!ex.sr&&def.sr){ex.sr=def.sr;}
+    });
   } else {
     fitExercises=FIT_DEFAULT_EXERCISES.map(e=>{
       const m=(e.muscles||[])[0]||'Other';
       const rr=FIT_REP_RANGES[m]||{min:8,max:12};
-      return{...e,repRange:rr,targetReps:rr.min,targetWeight:0,targetWeightUnit:'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0};
+      return{...e,repRange:rr,targetReps:e.sw||0,targetWeight:e.sw||0,targetWeightUnit:e.unit||'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0,goalWeight:e.gw||0,goalReps:e.gr||rr.min,defaultSets:e.sets||3};
     });
   }
   if(d.fitGroups&&d.fitGroups.length){
@@ -5948,7 +6090,7 @@ window._hydrateFromFirebase=function(d){
 
 // Called by Firebase module when user has no data yet (first time)
 window._initFreshApp=function(){
-  if(!fitExercises.length){fitExercises=FIT_DEFAULT_EXERCISES.map(e=>({...e}));save();}
+  if(!fitExercises.length){fitExercises=FIT_DEFAULT_EXERCISES.map(e=>{const m=(e.muscles||[])[0]||'Other';const rr=FIT_REP_RANGES[m]||{min:8,max:12};return{...e,repRange:rr,targetReps:e.sw||0,targetWeight:e.sw||0,targetWeightUnit:e.unit||'lbs',weightIncrement:FIT_WEIGHT_INCREMENT_KG,consecutiveMaxReps:0,goalWeight:e.gw||0,goalReps:e.gr||rr.min,defaultSets:e.sets||3};});save();}
   applySettings();render();
 };
 
