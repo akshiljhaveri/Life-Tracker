@@ -6843,6 +6843,46 @@ function importRenphoCSV(){
   inp.click();
 }
 
+const BODY_RANGES={
+  bmi:[
+    {lo:0,   hi:18.5,c:'#3b82f6',label:'Underweight'},
+    {lo:18.5,hi:25,  c:'#22c55e',label:'Normal'},
+    {lo:25,  hi:30,  c:'#eab308',label:'Overweight'},
+    {lo:30,  hi:60,  c:'#ef4444',label:'Obese'},
+  ],
+  bodyFat:[ // male ranges
+    {lo:0,  hi:8,  c:'#3b82f6',label:'Low'},
+    {lo:8,  hi:20, c:'#22c55e',label:'Normal'},
+    {lo:20, hi:25, c:'#eab308',label:'High'},
+    {lo:25, hi:60, c:'#ef4444',label:'Very High'},
+  ],
+  skeletalMuscle:[ // male ranges
+    {lo:0,  hi:33,  c:'#ef4444',label:'Low'},
+    {lo:33, hi:39,  c:'#eab308',label:'Normal'},
+    {lo:39, hi:100, c:'#22c55e',label:'High'},
+  ],
+  bodyWater:[ // male ranges
+    {lo:0,  hi:50,  c:'#ef4444',label:'Low'},
+    {lo:50, hi:65,  c:'#22c55e',label:'Normal'},
+    {lo:65, hi:100, c:'#3b82f6',label:'High'},
+  ],
+  visceralFat:[
+    {lo:0,  hi:10, c:'#22c55e',label:'Normal'},
+    {lo:10, hi:15, c:'#eab308',label:'High'},
+    {lo:15, hi:30, c:'#ef4444',label:'Very High'},
+  ],
+  subcutaneousFat:[ // male ranges
+    {lo:0,   hi:8.1,c:'#3b82f6',label:'Low'},
+    {lo:8.1, hi:16, c:'#22c55e',label:'Normal'},
+    {lo:16,  hi:20, c:'#eab308',label:'High'},
+    {lo:20,  hi:50, c:'#ef4444',label:'Very High'},
+  ],
+  protein:[
+    {lo:0,  hi:16, c:'#ef4444',label:'Low'},
+    {lo:16, hi:20, c:'#22c55e',label:'Normal'},
+    {lo:20, hi:30, c:'#3b82f6',label:'High'},
+  ],
+};
 function rFitBody(){
   const el=document.getElementById('fit-body-panel');if(!el)return;
   const sorted=[...bodyMetrics].sort((a,b)=>a.date<b.date?-1:1);
@@ -6917,8 +6957,27 @@ function rFitBody(){
       gridLines.push(`<line x1="0" y1="${svgY}" x2="${W_SVG}" y2="${svgY}" stroke="rgba(128,128,128,0.13)" stroke-width="1" stroke-dasharray="4 4"/>`);
       yLabels.push(`<div style="position:absolute;right:4px;top:${cssTop}%;transform:translateY(-50%);font-size:9.5px;color:var(--text-muted);white-space:nowrap;">${v.toFixed(cm.dec)}</div>`);
     }
+    // Health-range bands
+    function bandRects(key){
+      const bands=BODY_RANGES[key];if(!bands)return '';
+      return bands.map(b=>{
+        const lo=Math.max(b.lo,mn),hi=Math.min(b.hi,mx);
+        if(lo>=hi)return '';
+        const y1=toSvgY(hi),y2=toSvgY(lo);
+        return `<rect x="0" y="${y1.toFixed(1)}" width="${W_SVG}" height="${(y2-y1).toFixed(1)}" fill="${b.c}" fill-opacity="0.13"/>`;
+      }).join('');
+    }
+    // Legend for this metric (only bands that overlap visible range)
+    const legendBands=(BODY_RANGES[cm.key]||[]).filter(b=>b.hi>mn&&b.lo<mx);
+    const legend=legendBands.length?`
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-left:42px;margin-top:8px;">
+        ${legendBands.map(b=>`<div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:9px;height:9px;border-radius:2px;background:${b.c};opacity:0.75;flex-shrink:0;"></div>
+          <span style="font-size:10px;color:var(--text-muted);">${b.label}</span>
+        </div>`).join('')}
+      </div>`:'';
     // Store data for hover handler
-    window._bchData={pts,xs,norm,dec:cm.dec,unit:cm.unit,H:H_SVG,
+    window._bchData={pts,xs,norm,dec:cm.dec,unit:cm.unit,H:H_SVG,key:cm.key,
       chgTxt:`${chg>=0?'+':''}${chg.toFixed(cm.dec)}${cm.unit} all-time`,chgColor};
     chartInner=`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -6930,6 +6989,7 @@ function rFitBody(){
           <div style="width:42px;position:relative;height:${H_SVG}px;flex-shrink:0;">${yLabels.join('')}</div>
           <svg id="bch-svg" viewBox="0 0 ${W_SVG} ${H_SVG}" style="flex:1;height:${H_SVG}px;cursor:crosshair;touch-action:pan-y;" preserveAspectRatio="none"
                onmousemove="_bchHover(event)" onmouseleave="_bchLeave()" ontouchmove="_bchHover(event)" ontouchend="_bchLeave()">
+            ${bandRects(cm.key)}
             ${gridLines.join('')}
             <line id="bch-cross" x1="0" y1="0" x2="0" y2="${H_SVG}" stroke="rgba(100,100,100,0.35)" stroke-width="1.5" display="none"/>
             <path d="${path}" fill="none" stroke="${cm.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
@@ -6938,15 +6998,19 @@ function rFitBody(){
           </svg>
         </div>
         <div id="bch-tip" style="position:absolute;top:6px;left:0;pointer-events:none;display:none;background:var(--surface);border:1px solid var(--border-md);border-radius:8px;padding:6px 10px;box-shadow:0 2px 10px rgba(0,0,0,.12);z-index:5;">
-          <div id="bch-tip-date" style="font-size:10px;color:var(--text-muted);margin-bottom:2px;white-space:nowrap;"></div>
-          <div id="bch-tip-val" style="font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;"></div>
+          <div id="bch-tip-date" style="font-size:10px;color:var(--text-muted);margin-bottom:3px;white-space:nowrap;"></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div id="bch-tip-val" style="font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;"></div>
+            <div id="bch-tip-band" style="font-size:10px;padding:1px 6px;border-radius:4px;white-space:nowrap;display:none;font-weight:500;"></div>
+          </div>
         </div>
       </div>
       <div style="display:flex;margin-left:42px;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);">
         <span>${pts[0].x}</span>
         <span style="font-weight:600;color:var(--text);">${lastVal}${cm.unit} now</span>
         <span>${pts[pts.length-1].x}</span>
-      </div>`;
+      </div>
+      ${legend}`;
   } else {
     chartInner=`<div style="padding:28px 0;text-align:center;color:var(--text-faint);font-size:13px;">Not enough data for ${cm.label}</div>`;
   }
@@ -7061,6 +7125,21 @@ function _bchHover(e){
     const wW=wrap?wrap.getBoundingClientRect().width:rect.width+42;
     tipDate.textContent=pt.x;
     tipVal.textContent=pt.y.toFixed(d.dec)+d.unit;
+    // Band badge
+    const tipBand=document.getElementById('bch-tip-band');
+    if(tipBand&&typeof BODY_RANGES!=='undefined'){
+      const bands=BODY_RANGES[d.key];
+      const band=bands&&bands.find(b=>pt.y>=b.lo&&pt.y<b.hi);
+      if(band){
+        tipBand.textContent=band.label;
+        tipBand.style.display='inline-block';
+        tipBand.style.color=band.c;
+        tipBand.style.background=band.c+'22';
+        tipBand.style.border=`1px solid ${band.c}55`;
+      } else {
+        tipBand.style.display='none';
+      }
+    }
     tip.style.display='block';
     const tipW=tip.offsetWidth||100;
     const rawLeft=42+relX*rect.width-tipW/2;
