@@ -6848,126 +6848,161 @@ function rFitBody(){
   const sorted=[...bodyMetrics].sort((a,b)=>a.date<b.date?-1:1);
   const latest=sorted[sorted.length-1]||null;
   const prev=sorted[sorted.length-2]||null;
+  const BAD_KEYS=['weight','bodyFat','bmi','visceralFat','subcutaneousFat','metabolicAge'];
 
-  function delta(key){
+  function delta(key,dec=1){
     if(!latest||!prev||latest[key]==null||prev[key]==null)return '';
-    const d=(latest[key]-prev[key]);
-    if(Math.abs(d)<0.01)return '';
-    const sign=d>0?'+':'';
-    const color=key==='weight'||key==='bodyFat'||key==='bmi'||key==='visceralFat'||key==='subcutaneousFat'||key==='metabolicAge'
-      ?(d>0?'#ef4444':'#22c55e')
-      :(d>0?'#22c55e':'#ef4444');
-    return `<span style="font-size:11px;color:${color};margin-left:4px;">${sign}${Math.abs(d).toFixed(1)}</span>`;
+    const d=latest[key]-prev[key];
+    if(Math.abs(d)<0.005)return '';
+    const good=BAD_KEYS.includes(key)?d<0:d>0;
+    const color=good?'#22c55e':'#ef4444';
+    return `<span style="font-size:10px;color:${color};margin-left:4px;">${d>0?'+':''}${Math.abs(d).toFixed(dec)}</span>`;
   }
 
-  function statCard(label,key,unit,decimals=1){
-    const val=latest&&latest[key]!=null?latest[key].toFixed(decimals):'--';
-    return `<div style="background:var(--card-bg);border-radius:10px;padding:14px 16px;min-width:130px;flex:1;">
-      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">${label}</div>
-      <div style="font-size:22px;font-weight:700;color:var(--text);">${val}<span style="font-size:12px;font-weight:400;color:var(--text-muted);margin-left:2px;">${unit}</span>${delta(key)}</div>
+  function statCard(label,key,unit,dec=1){
+    const val=latest&&latest[key]!=null?latest[key].toFixed(dec):'--';
+    return `<div style="background:var(--surface);border-radius:10px;border:1px solid var(--border-md);padding:12px 14px;">
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">${label}</div>
+      <div style="font-size:19px;font-weight:700;color:var(--text);display:flex;align-items:baseline;flex-wrap:wrap;gap:2px;">
+        ${val}<span style="font-size:11px;font-weight:400;color:var(--text-muted);">${unit}</span>${delta(key,dec)}
+      </div>
     </div>`;
   }
 
-  // Sparkline chart builder (SVG path)
-  function miniChart(key,label,color,unit=''){
-    const pts=sorted.filter(m=>m[key]!=null).map(m=>({x:m.date,y:m[key]}));
-    if(pts.length<2)return `<div style="background:var(--card-bg);border-radius:10px;padding:16px;flex:1;min-width:260px;">
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${label}</div>
-      <div style="font-size:12px;color:var(--text-faint);">Not enough data</div>
-    </div>`;
-    const W=320,H=80;
+  function sectionHead(title){
+    return `<div style="font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px;">${title}</div>`;
+  }
+
+  // Switchable trend chart
+  const chartMetas=[
+    {key:'weight',    label:'Weight',        color:'#6366f1',unit:'kg', dec:1},
+    {key:'bodyFat',   label:'Body Fat',      color:'#ef4444',unit:'%',  dec:1},
+    {key:'muscleMass',label:'Muscle Mass',   color:'#22c55e',unit:'kg', dec:1},
+    {key:'bodyWater', label:'Body Water',    color:'#3b82f6',unit:'%',  dec:1},
+    {key:'protein',   label:'Protein',       color:'#f59e0b',unit:'%',  dec:1},
+    {key:'visceralFat',label:'Visceral Fat', color:'#f97316',unit:'',   dec:0},
+    {key:'bmi',       label:'BMI',           color:'#8b5cf6',unit:'',   dec:1},
+    {key:'bmr',       label:'BMR',           color:'#14b8a6',unit:'kcal',dec:0},
+  ];
+  const chartKey=window._bodyChartKey||'weight';
+  const cm=chartMetas.find(m=>m.key===chartKey)||chartMetas[0];
+  const pts=sorted.filter(m=>m[cm.key]!=null).map(m=>({x:m.date,y:m[cm.key]}));
+
+  const chips=chartMetas.map(m=>{
+    const on=m.key===chartKey;
+    return `<button onclick="window._bodyChartKey='${m.key}';rFitBody();" style="padding:4px 11px;border-radius:20px;border:1px solid ${on?m.color:'var(--border-md)'};background:${on?m.color:'var(--surface2)'};color:${on?'#fff':'var(--text-muted)'};font-size:11px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;">${m.label}</button>`;
+  }).join('');
+
+  let chartInner='';
+  if(pts.length>=2){
+    const W=600,H=100;
     const ys=pts.map(p=>p.y);
     const mn=Math.min(...ys),mx=Math.max(...ys);
     const range=mx-mn||1;
-    const xs=pts.map((_,i)=>i/(pts.length-1)*W);
-    const norm=ys.map(y=>H-((y-mn)/range)*(H-10)-5);
+    const xs=pts.map((_,i)=>+(i/(pts.length-1)*W).toFixed(2));
+    const norm=ys.map(y=>+(H-((y-mn)/range)*(H-20)-10).toFixed(2));
     const path=xs.map((x,i)=>(i===0?`M${x},${norm[i]}`:`L${x},${norm[i]}`)).join(' ');
-    const first=pts[0].y.toFixed(1),last=pts[pts.length-1].y.toFixed(1);
     const chg=pts[pts.length-1].y-pts[0].y;
-    const chgColor=key==='weight'||key==='bodyFat'||key==='bmi'||key==='visceralFat'||key==='subcutaneousFat'||key==='metabolicAge'
-      ?(chg<0?'#22c55e':'#ef4444'):(chg>0?'#22c55e':'#ef4444');
-    const sign=chg>=0?'+':'';
-    return `<div style="background:var(--card-bg);border-radius:10px;padding:16px;flex:1;min-width:260px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text);">${label}</div>
-        <div style="font-size:11px;color:${chgColor};font-weight:600;">${sign}${chg.toFixed(1)}${unit}</div>
+    const good=BAD_KEYS.includes(cm.key)?chg<0:chg>0;
+    const chgColor=good?'#22c55e':'#ef4444';
+    const lastVal=pts[pts.length-1].y.toFixed(cm.dec);
+    chartInner=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);">${cm.label}</div>
+        <div style="font-size:13px;color:${chgColor};font-weight:600;">${chg>=0?'+':''}${chg.toFixed(cm.dec)}${cm.unit} all-time</div>
       </div>
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;" preserveAspectRatio="none">
-        <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
-        <circle cx="${xs[xs.length-1]}" cy="${norm[norm.length-1]}" r="4" fill="${color}"/>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:110px;" preserveAspectRatio="none">
+        <path d="${path}" fill="none" stroke="${cm.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${xs[xs.length-1]}" cy="${norm[norm.length-1]}" r="5" fill="${cm.color}"/>
       </svg>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-muted);">
-        <span>${pts[0].x}</span><span style="font-weight:600;color:var(--text);">${last}${unit}</span><span>${pts[pts.length-1].x}</span>
-      </div>
-    </div>`;
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);">
+        <span>${pts[0].x}</span>
+        <span style="font-weight:600;color:var(--text);">${lastVal}${cm.unit} now</span>
+        <span>${pts[pts.length-1].x}</span>
+      </div>`;
+  } else {
+    chartInner=`<div style="padding:28px 0;text-align:center;color:var(--text-faint);font-size:13px;">Not enough data for ${cm.label}</div>`;
   }
 
   // Recent measurements table (last 10, newest first)
   const recent=[...sorted].reverse().slice(0,10);
-  const tableRows=recent.map(m=>`<tr>
-    <td>${m.date}</td>
-    <td>${m.time||''}</td>
-    <td>${m.weight!=null?m.weight.toFixed(1)+'kg':'--'}</td>
-    <td>${m.bmi!=null?m.bmi.toFixed(1):'--'}</td>
-    <td>${m.bodyFat!=null?m.bodyFat.toFixed(1)+'%':'--'}</td>
-    <td>${m.muscleMass!=null?m.muscleMass.toFixed(2)+'kg':'--'}</td>
-    <td>${m.bodyWater!=null?m.bodyWater.toFixed(1)+'%':'--'}</td>
-    <td>${m.bmr!=null?m.bmr.toFixed(0):'--'}</td>
-  </tr>`).join('');
+  const tRow=m=>`<tr style="border-bottom:1px solid var(--border);">
+    <td style="padding:7px 10px;white-space:nowrap;position:sticky;left:0;background:var(--bg);">${m.date}</td>
+    <td style="padding:7px 10px;white-space:nowrap;color:var(--text-muted);font-size:11px;">${(m.time||'').replace(/ (AM|PM)/,'$1')}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.weight!=null?m.weight.toFixed(1)+'kg':'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.bmi!=null?m.bmi.toFixed(1):'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.bodyFat!=null?m.bodyFat.toFixed(1)+'%':'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.muscleMass!=null?m.muscleMass.toFixed(1)+'kg':'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.bodyWater!=null?m.bodyWater.toFixed(1)+'%':'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.bmr!=null?m.bmr.toFixed(0):'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.visceralFat!=null?m.visceralFat.toFixed(0):'--'}</td>
+    <td style="padding:7px 10px;text-align:right;">${m.metabolicAge!=null?m.metabolicAge.toFixed(0):'--'}</td>
+  </tr>`;
 
   el.innerHTML=`<div style="padding:16px;max-width:900px;margin:0 auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="font-size:18px;font-weight:700;color:var(--text);">Body Metrics</div>
-      <button class="btn-primary" onclick="importRenphoCSV()" style="font-size:13px;padding:7px 14px;">Import Renpho CSV</button>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div style="font-size:20px;font-weight:700;color:var(--text);font-family:'Fraunces',serif;">Body Metrics</div>
+      <button onclick="importRenphoCSV()" style="font-size:11.5px;padding:5px 11px;border-radius:8px;border:1px solid var(--border-md);background:var(--surface2);color:var(--text-muted);cursor:pointer;">Import CSV</button>
     </div>
+
     ${sorted.length===0?`<div style="text-align:center;padding:48px;color:var(--text-faint);">
       <div style="font-size:15px;margin-bottom:8px;">No body metrics yet</div>
       <div style="font-size:13px;margin-bottom:16px;">Import your Renpho scale data to get started</div>
       <button class="btn-primary" onclick="importRenphoCSV()">Import Renpho CSV</button>
     </div>`:`
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;">${sorted.length} measurement${sorted.length===1?'':'s'} · Latest: ${latest?latest.date:''}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:20px;">${sorted.length} measurements · Latest: ${latest?latest.date:''}</div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+    ${sectionHead('Body Composition')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:20px;">
       ${statCard('Weight','weight','kg')}
-      ${statCard('BMI','bmi','')}
       ${statCard('Body Fat','bodyFat','%')}
       ${statCard('Muscle Mass','muscleMass','kg',2)}
       ${statCard('Skeletal Muscle','skeletalMuscle','%')}
       ${statCard('Body Water','bodyWater','%')}
-      ${statCard('Visceral Fat','visceralFat','')}
-      ${statCard('Protein','protein','%')}
+      ${statCard('Fat-Free Mass','fatFreeMass','kg')}
+    </div>
+
+    ${sectionHead('Metabolism')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:20px;">
       ${statCard('BMR','bmr','kcal',0)}
+      ${statCard('BMI','bmi','')}
       ${statCard('Metabolic Age','metabolicAge','yrs',0)}
+    </div>
+
+    ${sectionHead('Other')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:24px;">
+      ${statCard('Visceral Fat','visceralFat','',0)}
+      ${statCard('Subcutaneous Fat','subcutaneousFat','%')}
+      ${statCard('Protein','protein','%')}
       ${statCard('Bone Mass','boneMass','kg',2)}
     </div>
 
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em;">Trends</div>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
-      ${miniChart('weight','Weight','#6366f1','kg')}
-      ${miniChart('bodyFat','Body Fat %','#ef4444','%')}
-      ${miniChart('muscleMass','Muscle Mass','#22c55e','kg')}
-      ${miniChart('bodyWater','Body Water %','#3b82f6','%')}
-      ${miniChart('protein','Protein %','#f59e0b','%')}
-      ${miniChart('visceralFat','Visceral Fat','#f97316','')}
+    ${sectionHead('Trends')}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chips}</div>
+    <div style="background:var(--surface);border-radius:10px;border:1px solid var(--border-md);padding:16px;margin-bottom:24px;">
+      ${chartInner}
     </div>
 
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em;">Recent Measurements</div>
-    <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    ${sectionHead('Recent Measurements')}
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid var(--border-md);">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:580px;">
         <thead>
-          <tr style="color:var(--text-muted);border-bottom:1px solid var(--border);">
-            <th style="text-align:left;padding:6px 8px;">Date</th>
-            <th style="text-align:left;padding:6px 8px;">Time</th>
-            <th style="text-align:right;padding:6px 8px;">Weight</th>
-            <th style="text-align:right;padding:6px 8px;">BMI</th>
-            <th style="text-align:right;padding:6px 8px;">Body Fat</th>
-            <th style="text-align:right;padding:6px 8px;">Muscle</th>
-            <th style="text-align:right;padding:6px 8px;">Water</th>
-            <th style="text-align:right;padding:6px 8px;">BMR</th>
+          <tr style="color:var(--text-muted);border-bottom:1px solid var(--border-md);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;background:var(--surface);">
+            <th style="text-align:left;padding:8px 10px;position:sticky;left:0;background:var(--surface);">Date</th>
+            <th style="text-align:left;padding:8px 10px;">Time</th>
+            <th style="text-align:right;padding:8px 10px;">Weight</th>
+            <th style="text-align:right;padding:8px 10px;">BMI</th>
+            <th style="text-align:right;padding:8px 10px;">Body Fat</th>
+            <th style="text-align:right;padding:8px 10px;">Muscle</th>
+            <th style="text-align:right;padding:8px 10px;">Water</th>
+            <th style="text-align:right;padding:8px 10px;">BMR</th>
+            <th style="text-align:right;padding:8px 10px;">Visc Fat</th>
+            <th style="text-align:right;padding:8px 10px;">Met Age</th>
           </tr>
         </thead>
         <tbody style="color:var(--text);">
-          ${tableRows}
+          ${recent.map(tRow).join('')}
         </tbody>
       </table>
     </div>`}
