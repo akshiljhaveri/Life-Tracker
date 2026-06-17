@@ -4578,6 +4578,9 @@ function rFitSchedule(){
     if(rec.type==='lifting'&&rec.group)simHistory[rec.group.id]=d;
     else if(rec.type==='cardio'||rec.type==='run')simHistory['__cardio']=d;
   }
+  // Cache computed recs so schedule buttons use the same recommendation (with simHistory) at click time
+  window._fitWeekRecs={};
+  days7.forEach(({date,rec})=>{window._fitWeekRecs[date]=rec;});
   const todayStr=td();
   const planRows=days7.map(({date,rec,dayName,hasManual})=>{
     const isToday=date===todayStr;
@@ -4623,11 +4626,11 @@ function rFitSchedule(){
     if(hasManual){
       schedBtns=`<span style="font-size:11px;color:var(--accent);margin-top:8px;display:inline-block;">✓ Scheduled</span> <button onclick="fitClearScheduleDate('${date}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:#c0392b;margin-top:8px;margin-left:6px;display:inline-block;">✕ Clear</button>`;
     } else if(rec.type==='lifting'&&rec.group){
-      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule ${esc(rec.group.name)}</button>`;
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',(window._fitWeekRecs&&window._fitWeekRecs['${date}'])||fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule ${esc(rec.group.name)}</button>`;
     } else if(rec.type==='cardio'){
-      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule run</button>`;
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',(window._fitWeekRecs&&window._fitWeekRecs['${date}'])||fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule run</button>`;
     } else if(rec.type==='recovery'){
-      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule recovery</button>`;
+      schedBtns=`<button onclick="fitScheduleDayByDate('${date}',(window._fitWeekRecs&&window._fitWeekRecs['${date}'])||fitGetRecommendation('${date}'))" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);margin-top:8px;display:inline-block;">📅 Schedule recovery</button>`;
     } else if(rec.type==='rest'){
       schedBtns=`<button onclick="fitScheduleDayByDate('${date}',{type:'rest',label:'Rest Day'})" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--text-muted);margin-top:8px;display:inline-block;">📅 Mark as rest</button>`;
     }
@@ -4769,7 +4772,7 @@ function fitEditScheduleDay(dateStr){
   const recEl=document.getElementById('fit-edit-day-rec');
   const exEl=document.getElementById('fit-edit-day-exercises');
   if(titleEl)titleEl.textContent=_fmtDateShort(dateStr);
-  if(recEl)recEl.innerHTML=`<div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">Recommended</div><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;"><span style="font-size:13px;">${recLabel}</span><button onclick="fitScheduleDayByDate('${dateStr}',fitGetRecommendation('${dateStr}'));closeM('fit-edit-day-modal')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Use this</button></div>`;
+  if(recEl)recEl.innerHTML=`<div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">Recommended</div><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;"><span style="font-size:13px;">${recLabel}</span><button onclick="fitScheduleDayByDate('${dateStr}',(window._fitWeekRecs&&window._fitWeekRecs['${dateStr}'])||fitGetRecommendation('${dateStr}'));closeM('fit-edit-day-modal')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Use this</button></div>`;
   if(exEl)exEl.innerHTML=exRows||'<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No exercises scheduled</div>';
   openM('fit-edit-day-modal');
 }
