@@ -4744,14 +4744,69 @@ function fitReplaceExOnDate(dateStr, groupId, exId){
   fitReplaceExercise(dateStr, groupId, exId); // reuses existing modal, works with date or day-name key
 }
 
+function fitScheduleFromModalOpt(dateStr,idx){
+  const rec=window._fitModalOpts&&window._fitModalOpts[idx];
+  if(!rec)return;
+  fitScheduleDayByDate(dateStr,rec);
+  closeM('fit-edit-day-modal');
+}
+
 function fitEditScheduleDay(dateStr){
   window._fitEditDate=dateStr;
-  const rec=fitGetRecommendation(dateStr);
+  const rec=(window._fitWeekRecs&&window._fitWeekRecs[dateStr])||fitGetRecommendation(dateStr);
   const entries=fitSchedule[dateStr]||[];
   const entry=entries.find(x=>x.type==='lifting');
+
+  // Build ranked options list (all groups + cardio + recovery + rest, scored same as recommendation engine)
+  const dateMs=new Date(dateStr+'T12:00:00').getTime();
+  const msPerDay=86400000;
+  function _dsg(gid){
+    const sessions=fitSessions.filter(s=>s.groupId===gid&&new Date((s.date||'')+'T12:00:00').getTime()<dateMs);
+    let lastMs=sessions.length?Math.max(...sessions.map(s=>new Date(s.date+'T12:00:00').getTime())):0;
+    if(window._fitWeekRecs){
+      Object.entries(window._fitWeekRecs).forEach(([d,r])=>{
+        if(r.type==='lifting'&&r.group&&r.group.id===gid){
+          const sm=new Date(d+'T12:00:00').getTime();if(sm<dateMs&&sm>lastMs)lastMs=sm;
+        }
+      });
+    }
+    if(!lastMs)return 999;
+    return Math.round((dateMs-lastMs)/msPerDay);
+  }
+  function _gimb(gid){
+    const g=fitGroups.find(x=>x.id===gid);if(!g||!g.exerciseIds)return 0;
+    const gaps=g.exerciseIds.map(eid=>{
+      const ex=fitExercises.find(x=>x.id===eid);const def=FIT_DEFAULT_EXERCISES.find(d=>d.id===eid);
+      if(!ex&&!def)return 0;
+      const isBW=(ex?.unit||def?.unit)==='bw';
+      const curr=isBW?(ex?.targetReps||def?.sr||0):(ex?.targetWeight||def?.sw||0);
+      const goal=isBW?(ex?.goalReps||def?.gr||0):(ex?.goalWeight||def?.gw||0);
+      if(!goal||!curr)return 0;return Math.max(0,Math.min(1,1-(curr/goal)));
+    });return gaps.length?gaps.reduce((a,b)=>a+b,0)/gaps.length:0;
+  }
+  const opts=[];
+  ['grp_push_a','grp_pull','grp_legs','grp_push_b','grp_core'].forEach(gid=>{
+    const g=fitGroups.find(x=>x.id===gid);if(!g)return;
+    const ds=_dsg(gid);
+    const score=ds<2?-1:Math.min(ds/7,1)*0.6+_gimb(gid)*0.4;
+    const reason=ds===999?'Not yet trained':ds<2?`Trained ${ds===1?'yesterday':'recently'}`:`${ds} day${ds===1?'':'s'} ago`;
+    opts.push({icon:'🏋️',label:g.name,reason,score,rec:{type:'lifting',group:g}});
+  });
+  const cardioSess=fitSessions.filter(s=>s.type==='cardio'||s.type==='run');
+  const lastCMs=cardioSess.length?Math.max(...cardioSess.map(s=>new Date(s.date+'T12:00:00').getTime())):0;
+  const dsc=lastCMs?Math.round((dateMs-lastCMs)/msPerDay):999;
+  opts.push({icon:'🏃',label:'Run / Cardio',reason:dsc===999?'No recent runs':`${dsc} day${dsc===1?'':'s'} ago`,score:Math.min(dsc/4,1)*0.9,rec:{type:'cardio'}});
+  const recIdx=Math.min(fitSessions.filter(s=>s.type==='recovery').length,FIT_ACTIVE_RECOVERY_PLAN.length-1);
+  opts.push({icon:'🚶',label:'Active Recovery',reason:'Light movement day',score:0,rec:{type:'recovery',recoveryIdx:recIdx}});
+  opts.push({icon:'😴',label:'Rest Day',reason:'Full recovery',score:-0.5,rec:{type:'rest',label:'Rest Day'}});
+  opts.sort((a,b)=>b.score-a.score);
+  window._fitModalOpts={};
+  opts.forEach((o,i)=>{window._fitModalOpts[i]=o.rec;});
+
   const recLabel=rec.type==='lifting'&&rec.group?`💪 ${rec.group.name}`:
     rec.type==='cardio'?'🏃 Run / Cardio':
     rec.type==='recovery'?'🚶 Active Recovery':'😴 Rest Day';
+
   let exRows='';
   if(entry){
     exRows=(entry.exerciseIds||[]).map(eid=>{
@@ -4768,11 +4823,32 @@ function fitEditScheduleDay(dateStr){
       </div>`;
     }).join('');
   }
+
+  const optRows=opts.map((o,i)=>{
+    const isRec=rec.type===o.rec.type&&(rec.type!=='lifting'||rec.group?.id===o.rec.group?.id);
+    if(isRec)return''; // top rec already shown above
+    const dim=o.score<0;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--surface2);border-radius:8px;margin-bottom:5px;opacity:${dim?'.45':'1'};">
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:12px;font-weight:500;">${o.icon} ${esc(o.label)}</div>
+        <div style="font-size:10px;color:var(--text-faint);">${esc(o.reason)}</div>
+      </div>
+      <button onclick="fitScheduleFromModalOpt('${dateStr}',${i})" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--accent);white-space:nowrap;flex-shrink:0;margin-left:8px;">Schedule</button>
+    </div>`;
+  }).join('');
+
   const titleEl=document.getElementById('fit-edit-day-title');
   const recEl=document.getElementById('fit-edit-day-rec');
   const exEl=document.getElementById('fit-edit-day-exercises');
   if(titleEl)titleEl.textContent=_fmtDateShort(dateStr);
-  if(recEl)recEl.innerHTML=`<div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">Recommended</div><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;"><span style="font-size:13px;">${recLabel}</span><button onclick="fitScheduleDayByDate('${dateStr}',(window._fitWeekRecs&&window._fitWeekRecs['${dateStr}'])||fitGetRecommendation('${dateStr}'));closeM('fit-edit-day-modal')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;">Use this</button></div>`;
+  if(recEl)recEl.innerHTML=`
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em;">Recommended</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
+      <span style="font-size:13px;font-weight:500;">${recLabel}</span>
+      <button onclick="fitScheduleDayByDate('${dateStr}',(window._fitWeekRecs&&window._fitWeekRecs['${dateStr}'])||fitGetRecommendation('${dateStr}'));closeM('fit-edit-day-modal')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-left:8px;">Use this</button>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em;">Other options</div>
+    ${optRows}`;
   if(exEl)exEl.innerHTML=exRows||'<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No exercises scheduled</div>';
   openM('fit-edit-day-modal');
 }
