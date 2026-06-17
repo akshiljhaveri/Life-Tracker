@@ -6895,27 +6895,43 @@ function rFitBody(){
 
   let chartInner='';
   if(pts.length>=2){
-    const W=600,H=100;
+    const W_SVG=600,H_SVG=120,PAD_T=8,PAD_B=8;
+    const chartAreaH=H_SVG-PAD_T-PAD_B;
     const ys=pts.map(p=>p.y);
     const mn=Math.min(...ys),mx=Math.max(...ys);
     const range=mx-mn||1;
-    const xs=pts.map((_,i)=>+(i/(pts.length-1)*W).toFixed(2));
-    const norm=ys.map(y=>+(H-((y-mn)/range)*(H-20)-10).toFixed(2));
+    const xs=pts.map((_,i)=>+(i/(pts.length-1)*W_SVG).toFixed(2));
+    const toSvgY=v=>+(PAD_T+chartAreaH*(1-(v-mn)/range)).toFixed(2);
+    const norm=ys.map(p=>toSvgY(p));
     const path=xs.map((x,i)=>(i===0?`M${x},${norm[i]}`:`L${x},${norm[i]}`)).join(' ');
     const chg=pts[pts.length-1].y-pts[0].y;
     const good=BAD_KEYS.includes(cm.key)?chg<0:chg>0;
     const chgColor=good?'#22c55e':'#ef4444';
     const lastVal=pts[pts.length-1].y.toFixed(cm.dec);
+    // Y-axis: 5 evenly-spaced ticks from mn→mx
+    const TICKS=4;
+    const gridLines=[],yLabels=[];
+    for(let i=0;i<=TICKS;i++){
+      const v=mn+(mx-mn)*i/TICKS;
+      const svgY=toSvgY(v);
+      const cssTop=(svgY/H_SVG*100).toFixed(2);
+      gridLines.push(`<line x1="0" y1="${svgY}" x2="${W_SVG}" y2="${svgY}" stroke="rgba(128,128,128,0.13)" stroke-width="1" stroke-dasharray="4 4"/>`);
+      yLabels.push(`<div style="position:absolute;right:4px;top:${cssTop}%;transform:translateY(-50%);font-size:9.5px;color:var(--text-muted);white-space:nowrap;">${v.toFixed(cm.dec)}</div>`);
+    }
     chartInner=`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:14px;font-weight:600;color:var(--text);">${cm.label}</div>
         <div style="font-size:13px;color:${chgColor};font-weight:600;">${chg>=0?'+':''}${chg.toFixed(cm.dec)}${cm.unit} all-time</div>
       </div>
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:110px;" preserveAspectRatio="none">
-        <path d="${path}" fill="none" stroke="${cm.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-        <circle cx="${xs[xs.length-1]}" cy="${norm[norm.length-1]}" r="5" fill="${cm.color}"/>
-      </svg>
-      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);">
+      <div style="display:flex;align-items:stretch;">
+        <div style="width:38px;position:relative;height:${H_SVG}px;flex-shrink:0;">${yLabels.join('')}</div>
+        <svg viewBox="0 0 ${W_SVG} ${H_SVG}" style="flex:1;height:${H_SVG}px;" preserveAspectRatio="none">
+          ${gridLines.join('')}
+          <path d="${path}" fill="none" stroke="${cm.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${xs[xs.length-1]}" cy="${norm[norm.length-1]}" r="5" fill="${cm.color}"/>
+        </svg>
+      </div>
+      <div style="display:flex;margin-left:38px;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);">
         <span>${pts[0].x}</span>
         <span style="font-weight:600;color:var(--text);">${lastVal}${cm.unit} now</span>
         <span>${pts[pts.length-1].x}</span>
