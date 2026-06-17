@@ -655,7 +655,8 @@ body.dark{
 .trophy-date{font-size:10px;color:var(--accent-mid);margin-top:4px;}
 /* ── FITNESS ─────────────────────────────────────────────────────────── */
 /* tab bar */
-.fit-tabs{display:flex;gap:4px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.fit-tabs{display:flex;gap:6px;margin-bottom:1.25rem;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;flex-wrap:nowrap;}
+.fit-tabs::-webkit-scrollbar{display:none;}
 .fit-tab-btn{padding:5px 11px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface2);color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:11.5px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,color .15s;}
 .fit-tab-btn.a{background:var(--accent);color:#F5F3EE;border-color:var(--accent);}
 /* cards */
@@ -759,7 +760,6 @@ body.dark{
 .fit-cal-day-num{font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:2px;}
 .fit-cal-day.today .fit-cal-day-num{color:var(--accent);font-weight:700;}
 .fit-cal-day-label{font-size:9px;color:var(--accent-mid);font-weight:500;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-@media(max-width:500px){
 /* MUSCLE BADGES */
 .muscle-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;white-space:nowrap;}
 .muscle-chip-label{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface2);cursor:pointer;font-size:13px;transition:all .12s;user-select:none;}
@@ -791,6 +791,16 @@ details>summary::marker{display:none;}
 .fit-km-lbl{font-size:9px;color:var(--text-faint);}
 /* Recommendation badge */
 .fit-rec-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;background:rgba(45,90,61,.1);color:#2D5A3D;border:1px solid rgba(45,90,61,.25);border-radius:20px;padding:5px 12px;font-weight:500;}
+/* touch targets — all fitness action buttons meet 44px minimum */
+.fit-pill-btn,.fit-log-btn,.fit-ghost-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+/* iOS Safari input zoom prevention — font-size<16px triggers autozoom */
+@media(max-width:600px){
+  .fit-edit-set-inp,.fit-edit-unit-sel,.fit-cardio-inp,.fit-sheet-set-val{font-size:16px!important;}
+}
+/* Body stat grid — 2 columns on very narrow screens */
+@media(max-width:420px){
+  .fit-body-grid{grid-template-columns:repeat(2,1fr)!important;}
+}
 </style>
 </head>
 <body>
@@ -6901,16 +6911,49 @@ function rFitBody(){
 
   function statCard(label,key,unit,dec=1){
     const val=latest&&latest[key]!=null?latest[key].toFixed(dec):'--';
-    return `<div style="background:var(--surface);border-radius:10px;border:1px solid var(--border-md);padding:12px 14px;">
+    const bands=BODY_RANGES[key];
+    const band=bands&&latest&&latest[key]!=null?bands.find(b=>latest[key]>=b.lo&&latest[key]<b.hi):null;
+    const leftBorder=band?`3px solid ${band.c}`:'3px solid var(--border-md)';
+    return `<div style="background:var(--surface);border-radius:10px;border:1px solid var(--border-md);border-left:${leftBorder};padding:12px 14px;">
       <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">${label}</div>
       <div style="font-size:19px;font-weight:700;color:var(--text);display:flex;align-items:baseline;flex-wrap:wrap;gap:2px;">
         ${val}<span style="font-size:11px;font-weight:400;color:var(--text-muted);">${unit}</span>${delta(key,dec)}
       </div>
+      ${band?`<div style="font-size:9.5px;color:${band.c};margin-top:3px;font-weight:500;">${band.label}</div>`:''}
     </div>`;
   }
 
   function sectionHead(title){
-    return `<div style="font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px;">${title}</div>`;
+    return `<div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 10px;">${title}</div>`;
+  }
+
+  function heroCard(){
+    if(!latest||latest.weight==null)return '';
+    const wVal=latest.weight.toFixed(1);
+    const wDelta=prev&&prev.weight!=null?latest.weight-prev.weight:null;
+    const deltaHTML=wDelta!=null&&Math.abs(wDelta)>=0.05
+      ?`<span style="font-size:13px;color:${wDelta<0?'#22c55e':'#ef4444'};margin-left:8px;font-weight:500;">${wDelta>0?'+':''}${wDelta.toFixed(1)} kg</span>`:'';
+    const bmiBand=latest.bmi!=null?(BODY_RANGES.bmi||[]).find(b=>latest.bmi>=b.lo&&latest.bmi<b.hi):null;
+    const totalChg=sorted.length>1?latest.weight-sorted[0].weight:null;
+    const since=sorted.length>1?sorted[0].date:null;
+    return `<div style="background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:20px 20px 16px;margin-bottom:20px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Weight</div>
+          <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;">
+            <span style="font-size:42px;font-family:'Fraunces',serif;font-weight:400;color:var(--text);line-height:1;">${wVal}</span>
+            <span style="font-size:16px;color:var(--text-muted);">kg</span>
+            ${deltaHTML}
+          </div>
+        </div>
+        ${bmiBand?`<div style="flex-shrink:0;padding:6px 13px;border-radius:20px;background:${bmiBand.c}18;border:1px solid ${bmiBand.c}44;color:${bmiBand.c};font-size:12px;font-weight:600;">${bmiBand.label}</div>`:''}
+      </div>
+      ${totalChg!=null?`<div style="font-size:11.5px;color:var(--text-muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;">
+        ${since?`<span>Since ${since}: <span style="color:${totalChg<0?'#22c55e':'#ef4444'};font-weight:600;">${totalChg>0?'+':''}${totalChg.toFixed(1)} kg</span></span>`:''}
+        ${latest.bmi!=null?`<span>BMI <span style="font-weight:600;color:var(--text);">${latest.bmi.toFixed(1)}</span></span>`:''}
+        ${latest.metabolicAge!=null?`<span>Met. age <span style="font-weight:600;color:var(--text);">${latest.metabolicAge.toFixed(0)}</span></span>`:''}
+      </div>`:''}
+    </div>`;
   }
 
   // Switchable trend chart
@@ -7047,11 +7090,12 @@ function rFitBody(){
       <div style="font-size:13px;margin-bottom:16px;">Import your Renpho scale data to get started</div>
       <button class="btn-primary" onclick="importRenphoCSV()">Import Renpho CSV</button>
     </div>`:`
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:20px;">${sorted.length} measurements · Latest: ${latest?latest.date:''}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;">${sorted.length} measurements · Latest: ${latest?latest.date:''}</div>
+
+    ${heroCard()}
 
     ${sectionHead('Body Composition')}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:20px;">
-      ${statCard('Weight','weight','kg')}
+    <div class="fit-body-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px;">
       ${statCard('Body Fat','bodyFat','%')}
       ${statCard('Muscle Mass','muscleMass','kg',2)}
       ${statCard('Skeletal Muscle','skeletalMuscle','%')}
@@ -7060,14 +7104,14 @@ function rFitBody(){
     </div>
 
     ${sectionHead('Metabolism')}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:20px;">
+    <div class="fit-body-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px;">
       ${statCard('BMR','bmr','kcal',0)}
       ${statCard('BMI','bmi','')}
       ${statCard('Metabolic Age','metabolicAge','yrs',0)}
     </div>
 
     ${sectionHead('Other')}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:24px;">
+    <div class="fit-body-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:24px;">
       ${statCard('Visceral Fat','visceralFat','',0)}
       ${statCard('Subcutaneous Fat','subcutaneousFat','%')}
       ${statCard('Protein','protein','%')}
