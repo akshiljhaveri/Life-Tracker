@@ -4457,7 +4457,7 @@ function fitLogSet(){
   const item=fitActiveSession.items.find(x=>x.id===fitCurrentExId);if(!item)return;
   const wRaw=parseFloat(document.getElementById('fit-inp-weight').value);
   const reps=parseInt(document.getElementById('fit-inp-reps').value);
-  if(isNaN(wRaw)||isNaN(reps)||reps<1){alert('Enter valid weight and reps.');return;}
+  if(isNaN(wRaw)||wRaw<0||isNaN(reps)||reps<1){alert('Enter valid weight and reps.');return;}
   const weightKg=fitSheetUnit==='kg'?wRaw:fitLbsToKg(wRaw);
   item.sets.push({weightKg:Math.round(weightKg*100)/100,reps,unit:fitSheetUnit});
   save();
@@ -4503,7 +4503,8 @@ function fitPromptFinish(){
 
 function fitFinishWorkout(){
   if(!fitActiveSession)return;
-  const completedSession={...fitActiveSession,endTime:Date.now(),date:td(),type:'lifting'};
+  const sessionDate=fitActiveSession.date||_ldStr(new Date(fitActiveSession.startTime));
+  const completedSession={...fitActiveSession,endTime:Date.now(),date:sessionDate,type:'lifting'};
   fitSessions.push(completedSession);
   fitApplyProgressiveOverload(completedSession);
   if(fitSessionTimer)clearInterval(fitSessionTimer);
@@ -4874,7 +4875,11 @@ function renderDayExercisesByDate(dateStr, exIds, groupId){
 function fitStartWorkoutFromSchedule(dateStr){
   if(fitActiveSession&&!confirm('You have an active session. Discard it?'))return;
   if(fitSessionTimer)clearInterval(fitSessionTimer);
-  const entries=fitSchedule[dateStr]||[];
+  const entries=(fitSchedule[dateStr]||[]).map(e=>{
+    if((e.type==='group'||!e.type)&&(e.id||e.groupId))
+      return{...e,type:'lifting',groupId:e.groupId||e.id,exerciseIds:e.exerciseIds||[]};
+    return e;
+  });
   const entry=entries.find(x=>x.type==='lifting');
   if(!entry){alert('No lifting session scheduled for today.');return;}
   const g=fitGroups.find(x=>x.id===entry.groupId);
@@ -4924,7 +4929,7 @@ function fitEditActiveSession(){
 function fitRemoveExFromActive(idx){
   if(!fitActiveSession)return;
   fitActiveSession.items.splice(idx,1);
-  closeM('fit-edit-day-modal');rFitSessionCards();
+  save();closeM('fit-edit-day-modal');rFitSessionCards();
 }
 
 // ── CATEGORY CONSTANTS FOR EXERCISE REPLACEMENT ─────────────────────────────
@@ -5006,7 +5011,9 @@ function fitReplaceExercise(dayName, groupId, exId){
   const currentExIds=entry?.exerciseIds||g?.exerciseIds||[];
   const allowedMuscles=getGroupCategory(groupId);
   const removedMuscles=ex.muscles||[];
-  const scored=FIT_DEFAULT_EXERCISES
+  // Search fitExercises (includes user-created) with FIT_DEFAULT_EXERCISES as fallback for any gaps
+  const candidatePool=fitExercises.length?fitExercises:[...FIT_DEFAULT_EXERCISES];
+  const scored=candidatePool
     .map(c=>({ex:c,score:scoreReplacement(c,removedMuscles,allowedMuscles,currentExIds.filter(id=>id!==exId))}))
     .filter(x=>x.score>=0)
     .sort((a,b)=>b.score-a.score);
@@ -5592,10 +5599,13 @@ function getExerciseHistory(exId){
     if(!item)return;
     const sets=(item.sets||[]).filter(s=>s.reps>0);
     if(!sets.length)return;
-    const bestSet=sets.reduce((a,b)=>(a.weight||0)*a.reps>=(b.weight||0)*b.reps?a:b);
-    const vol=sets.reduce((sum,s)=>sum+(s.weight||0)*s.reps,0);
-    const e1rm=bestSet.weight?Math.round(bestSet.weight*(1+bestSet.reps/30)):0;
-    hist.push({date:s.date,bestW:bestSet.weight||0,bestR:bestSet.reps,vol:Math.round(vol),e1rm,sets,sessionName:s.name||''});
+    // Sets store weightKg — convert to lbs for display if that was the logged unit
+    function setW(st){return st.unit==='lbs'?fitKgToLbs(st.weightKg||0):(st.weightKg||0);}
+    const bestSet=sets.reduce((a,b)=>setW(a)*a.reps>=setW(b)*b.reps?a:b);
+    const vol=sets.reduce((sum,st)=>sum+setW(st)*st.reps,0);
+    const bw=setW(bestSet);
+    const e1rm=bw>0?Math.round(bw*(1+bestSet.reps/30)):0;
+    hist.push({date:s.date,bestW:Math.round(bw*10)/10,bestR:bestSet.reps,vol:Math.round(vol),e1rm,sets,sessionName:s.name||''});
   });
   return hist.sort((a,b)=>a.date<b.date?-1:1);
 }
@@ -5603,7 +5613,11 @@ function getExerciseHistory(exId){
 function svgLine(vals,color,unit){
   if(vals.length<2)return'<div style="font-size:11px;color:var(--text-faint);padding:8px 0;">Log at least 2 sessions to see chart.</div>';
   const W=300,H=80,PL=36,PR=8,PT=8,PB=16;
-  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+  const rawMin=Math.min(...vals),rawMax=Math.max(...vals);
+  // When all values are equal, pad the axis so the line sits in the middle
+  const range=rawMax-rawMin||rawMax*0.1||1;
+  const min=rawMax===rawMin?rawMin-range/2:rawMin;
+  const max=rawMax===rawMin?rawMax+range/2:rawMax;
   const cx=i=>PL+(i/(vals.length-1))*(W-PL-PR);
   const cy=v=>PT+(1-(v-min)/range)*(H-PT-PB);
   const pts=vals.map((v,i)=>`${cx(i).toFixed(1)},${cy(v).toFixed(1)}`).join(' ');
@@ -5725,7 +5739,7 @@ function fitReplaceInactiveExercise(exId){
 
   let count=0;
   fitGroups.forEach(g=>{
-    if(!g.exerciseIds.includes(exId))return;
+    if(!(g.exerciseIds||[]).includes(exId))return;
     const rep=bestReplacement(g.exerciseIds);
     if(rep){g.exerciseIds=g.exerciseIds.map(id=>id===exId?rep.id:id);count++;}
     else{g.exerciseIds=g.exerciseIds.filter(id=>id!==exId);}
@@ -6156,7 +6170,6 @@ function fitGetTarget(exId){
 
 function fitApplyProgressiveOverload(session){
   if(!session||(session.type&&session.type!=='lifting'))return;
-  const now=new Date().toISOString().slice(0,10);
   (session.items||[]).forEach(item=>{
     const ex=fitExercises.find(x=>x.id===item.exId);if(!ex)return;
     const sets=(item.sets||[]).filter(s=>s&&typeof s==='object');if(!sets.length)return;
@@ -6196,7 +6209,7 @@ let fitPastExercises=[]; // [{exId, name, sets:[{weightKg,reps,unit}]}]
 
 function fitOpenPastWorkout(){
   const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
-  document.getElementById('fit-past-date').value=yesterday.toISOString().slice(0,10);
+  document.getElementById('fit-past-date').value=_ldStr(yesterday);
   document.getElementById('fit-past-name').value='';
   document.getElementById('fit-past-time').value='';
   fitPastExercises=[];
@@ -6580,13 +6593,13 @@ function fitGetRecommendation(dateStr,simHistory){
       const simMs=new Date(simHistory[gid]+'T12:00:00').getTime();
       if(simMs<dateMs&&simMs>lastMs)lastMs=simMs;
     }
-    for(let back=1;back<=7;back++){
+    // Also check past schedule entries (date-key format) for planned-but-possibly-missed workouts
+    for(let back=1;back<=14;back++){
       const pastMs=dateMs-back*msPerDay;
-      const pastDow=new Date(pastMs).getDay();
-      const pastDayName=DAY_NAMES[pastDow===0?6:pastDow-1];
-      const sched=fitSchedule?.[pastDayName];
+      const pastDateStr=_ldStr(new Date(pastMs));
+      const sched=fitSchedule?.[pastDateStr];
       if(Array.isArray(sched)){
-        const entry=sched.find(x=>x.type==='group'&&x.id===gid);
+        const entry=sched.find(x=>(x.type==='lifting'||x.type==='group')&&(x.groupId||x.id)===gid);
         if(entry&&pastMs>lastMs)lastMs=pastMs;
       }
     }
@@ -6611,11 +6624,10 @@ function fitGetRecommendation(dateStr,simHistory){
     const simMs=new Date(simHistory['__cardio']+'T12:00:00').getTime();
     if(simMs<dateMs&&simMs>lastCardioMs)lastCardioMs=simMs;
   }
-  for(let back=1;back<=7;back++){
+  for(let back=1;back<=14;back++){
     const pastMs=dateMs-back*msPerDay;
-    const pastDow=new Date(pastMs).getDay();
-    const pastDayName=DAY_NAMES[pastDow===0?6:pastDow-1];
-    const sched=fitSchedule?.[pastDayName];
+    const pastDateStr=_ldStr(new Date(pastMs));
+    const sched=fitSchedule?.[pastDateStr];
     if(Array.isArray(sched)&&sched.some(x=>x.type==='run'||x.type==='cardio')){
       if(pastMs>lastCardioMs)lastCardioMs=pastMs;
     }
