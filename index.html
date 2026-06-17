@@ -6895,7 +6895,7 @@ function rFitBody(){
 
   let chartInner='';
   if(pts.length>=2){
-    const W_SVG=600,H_SVG=120,PAD_T=8,PAD_B=8;
+    const W_SVG=600,H_SVG=130,PAD_T=10,PAD_B=10;
     const chartAreaH=H_SVG-PAD_T-PAD_B;
     const ys=pts.map(p=>p.y);
     const mn=Math.min(...ys),mx=Math.max(...ys);
@@ -6908,7 +6908,6 @@ function rFitBody(){
     const good=BAD_KEYS.includes(cm.key)?chg<0:chg>0;
     const chgColor=good?'#22c55e':'#ef4444';
     const lastVal=pts[pts.length-1].y.toFixed(cm.dec);
-    // Y-axis: 5 evenly-spaced ticks from mn→mx
     const TICKS=4;
     const gridLines=[],yLabels=[];
     for(let i=0;i<=TICKS;i++){
@@ -6918,20 +6917,32 @@ function rFitBody(){
       gridLines.push(`<line x1="0" y1="${svgY}" x2="${W_SVG}" y2="${svgY}" stroke="rgba(128,128,128,0.13)" stroke-width="1" stroke-dasharray="4 4"/>`);
       yLabels.push(`<div style="position:absolute;right:4px;top:${cssTop}%;transform:translateY(-50%);font-size:9.5px;color:var(--text-muted);white-space:nowrap;">${v.toFixed(cm.dec)}</div>`);
     }
+    // Store data for hover handler
+    window._bchData={pts,xs,norm,dec:cm.dec,unit:cm.unit,H:H_SVG,
+      chgTxt:`${chg>=0?'+':''}${chg.toFixed(cm.dec)}${cm.unit} all-time`,chgColor};
     chartInner=`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:14px;font-weight:600;color:var(--text);">${cm.label}</div>
-        <div style="font-size:13px;color:${chgColor};font-weight:600;">${chg>=0?'+':''}${chg.toFixed(cm.dec)}${cm.unit} all-time</div>
+        <div id="bch-info" style="font-size:13px;color:${chgColor};font-weight:600;">${chg>=0?'+':''}${chg.toFixed(cm.dec)}${cm.unit} all-time</div>
       </div>
-      <div style="display:flex;align-items:stretch;">
-        <div style="width:38px;position:relative;height:${H_SVG}px;flex-shrink:0;">${yLabels.join('')}</div>
-        <svg viewBox="0 0 ${W_SVG} ${H_SVG}" style="flex:1;height:${H_SVG}px;" preserveAspectRatio="none">
-          ${gridLines.join('')}
-          <path d="${path}" fill="none" stroke="${cm.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-          <circle cx="${xs[xs.length-1]}" cy="${norm[norm.length-1]}" r="5" fill="${cm.color}"/>
-        </svg>
+      <div id="bch-wrap" style="position:relative;">
+        <div style="display:flex;align-items:stretch;">
+          <div style="width:42px;position:relative;height:${H_SVG}px;flex-shrink:0;">${yLabels.join('')}</div>
+          <svg id="bch-svg" viewBox="0 0 ${W_SVG} ${H_SVG}" style="flex:1;height:${H_SVG}px;cursor:crosshair;touch-action:pan-y;" preserveAspectRatio="none"
+               onmousemove="_bchHover(event)" onmouseleave="_bchLeave()" ontouchmove="_bchHover(event)" ontouchend="_bchLeave()">
+            ${gridLines.join('')}
+            <line id="bch-cross" x1="0" y1="0" x2="0" y2="${H_SVG}" stroke="rgba(100,100,100,0.35)" stroke-width="1.5" display="none"/>
+            <path d="${path}" fill="none" stroke="${cm.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="${xs[xs.length-1]}" cy="${norm[norm.length-1]}" r="3.5" fill="${cm.color}" opacity="0.6"/>
+            <circle id="bch-dot" cx="0" cy="0" r="5.5" fill="${cm.color}" stroke="white" stroke-width="2" display="none"/>
+          </svg>
+        </div>
+        <div id="bch-tip" style="position:absolute;top:6px;left:0;pointer-events:none;display:none;background:var(--surface);border:1px solid var(--border-md);border-radius:8px;padding:6px 10px;box-shadow:0 2px 10px rgba(0,0,0,.12);z-index:5;">
+          <div id="bch-tip-date" style="font-size:10px;color:var(--text-muted);margin-bottom:2px;white-space:nowrap;"></div>
+          <div id="bch-tip-val" style="font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;"></div>
+        </div>
       </div>
-      <div style="display:flex;margin-left:38px;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);">
+      <div style="display:flex;margin-left:42px;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted);">
         <span>${pts[0].x}</span>
         <span style="font-weight:600;color:var(--text);">${lastVal}${cm.unit} now</span>
         <span>${pts[pts.length-1].x}</span>
@@ -7023,6 +7034,48 @@ function rFitBody(){
       </table>
     </div>`}
   </div>`;
+}
+
+function _bchHover(e){
+  if(e.cancelable)e.preventDefault();
+  const svg=document.getElementById('bch-svg');
+  if(!svg||!window._bchData)return;
+  const d=window._bchData;
+  const rect=svg.getBoundingClientRect();
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const relX=Math.max(0,Math.min(1,(cx-rect.left)/rect.width));
+  const idx=Math.max(0,Math.min(d.pts.length-1,Math.round(relX*(d.pts.length-1))));
+  const pt=d.pts[idx];
+  const svgX=d.xs[idx],svgY=d.norm[idx];
+  const cross=document.getElementById('bch-cross');
+  const dot=document.getElementById('bch-dot');
+  const tip=document.getElementById('bch-tip');
+  const tipDate=document.getElementById('bch-tip-date');
+  const tipVal=document.getElementById('bch-tip-val');
+  const info=document.getElementById('bch-info');
+  if(cross){cross.setAttribute('x1',svgX);cross.setAttribute('x2',svgX);cross.removeAttribute('display');}
+  if(dot){dot.setAttribute('cx',svgX);dot.setAttribute('cy',svgY);dot.removeAttribute('display');}
+  if(info){info.style.color='var(--text)';info.textContent=pt.x+'  ·  '+pt.y.toFixed(d.dec)+d.unit;}
+  if(tip&&tipDate&&tipVal){
+    const wrap=document.getElementById('bch-wrap');
+    const wW=wrap?wrap.getBoundingClientRect().width:rect.width+42;
+    tipDate.textContent=pt.x;
+    tipVal.textContent=pt.y.toFixed(d.dec)+d.unit;
+    tip.style.display='block';
+    const tipW=tip.offsetWidth||100;
+    const rawLeft=42+relX*rect.width-tipW/2;
+    tip.style.left=Math.max(0,Math.min(rawLeft,wW-tipW))+'px';
+  }
+}
+function _bchLeave(){
+  const cross=document.getElementById('bch-cross');
+  const dot=document.getElementById('bch-dot');
+  const tip=document.getElementById('bch-tip');
+  const info=document.getElementById('bch-info');
+  if(cross)cross.setAttribute('display','none');
+  if(dot)dot.setAttribute('display','none');
+  if(tip)tip.style.display='none';
+  if(info&&window._bchData){info.style.color=window._bchData.chgColor;info.textContent=window._bchData.chgTxt;}
 }
 
 // ─────────────────────────── DASHBOARD TAB ───────────────────────────────────
