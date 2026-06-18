@@ -5100,8 +5100,9 @@ function fitReplaceExercise(dayName, groupId, exId){
   const currentExIds=entry?.exerciseIds||g?.exerciseIds||[];
   const allowedMuscles=getGroupCategory(groupId);
   const removedMuscles=ex.muscles||[];
-  // Search fitExercises (includes user-created) with FIT_DEFAULT_EXERCISES as fallback for any gaps
-  const candidatePool=fitExercises.length?fitExercises:[...FIT_DEFAULT_EXERCISES];
+  // Merge fitExercises + FIT_DEFAULT_EXERCISES (deduped by id), then filter out inactive
+  const merged=Object.values([...FIT_DEFAULT_EXERCISES,...fitExercises].reduce((acc,e)=>{acc[e.id]=e;return acc;},{}));
+  const candidatePool=merged.filter(c=>c.active!==false);
   const scored=candidatePool
     .map(c=>({ex:c,score:scoreReplacement(c,removedMuscles,allowedMuscles,currentExIds.filter(id=>id!==exId))}))
     .filter(x=>x.score>=0)
@@ -5123,12 +5124,12 @@ function fitReplaceExercise(dayName, groupId, exId){
   let body='';
   if(best.length){
     body+=`<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Best matches — same muscles</div>`;
-    body+=best.slice(0,5).map(exCard).join('');
+    body+=best.slice(0,15).map(exCard).join('');
   }
   if(other.length){
     const catName=getGroupCategoryName(groupId);
     body+=`<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin:${best.length?'12px':'0'} 0 6px;">Other ${esc(catName)} exercises</div>`;
-    body+=other.slice(0,5).map(exCard).join('');
+    body+=other.slice(0,15).map(exCard).join('');
   }
   if(!body)body='<div style="font-size:13px;color:var(--text-faint);padding:12px 0;">No alternatives found.</div>';
   const titleEl=document.getElementById('fit-replace-title');
