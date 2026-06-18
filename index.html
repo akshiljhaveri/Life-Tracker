@@ -4258,6 +4258,16 @@ function rFitToday(){
         <button class="fit-ghost-btn" onclick="setFitTab('schedule')" style="font-size:12px;">→ Go to Schedule</button>
       </div>`;
     } else if(liftEntry){
+      const todayLiftDone=fitSessions.some(s=>s.date===dateStr&&s.type==='lifting');
+      if(todayLiftDone){
+        html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:32px 24px;text-align:center;">
+          <div style="font-size:36px;margin-bottom:10px;">✅</div>
+          <div style="font-size:17px;font-weight:600;margin-bottom:4px;">All done for today!</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Workout complete. See you next session.</div>
+          <button class="fit-ghost-btn" onclick="setFitTab('history')" style="font-size:12px;">View session →</button>
+        </div>`;
+        el.innerHTML=html;return;
+      }
       const g=fitGroups.find(x=>x.id===liftEntry.groupId);
       const exIds=liftEntry.exerciseIds||(g?.exerciseIds||[]);
       const emoji=g?.muscles?.includes('Chest')||g?.muscles?.includes('Triceps')?'💪':g?.muscles?.includes('Lats')?'🏋️':g?.muscles?.includes('Quads')?'🦵':'💪';
@@ -5917,12 +5927,12 @@ function fitOpenExerciseDetail(exId){
     </div>`).join('')}
   </div>`;
 
-  const wChart=hist.length>=2&&!isBW?`<div style="margin-bottom:14px;">
+  const wChart=hist.length>=1&&!isBW?`<div style="margin-bottom:14px;">
     <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Weight Progression</div>
     ${svgLine(hist.map(h=>h.bestW),'#2D5A3D','lbs')}
   </div>`:'';
 
-  const e1rmChart=hist.length>=2&&!isBW?`<div style="margin-bottom:14px;">
+  const e1rmChart=hist.length>=1&&!isBW?`<div style="margin-bottom:14px;">
     <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Estimated 1RM <span style="font-weight:400;font-size:10px;">(Epley formula)</span></div>
     ${svgLine(hist.map(h=>h.e1rm),'#8E44AD','lbs')}
   </div>`:'';
@@ -5941,7 +5951,7 @@ function fitOpenExerciseDetail(exId){
     }).join('')}
   </div>`:'<div style="font-size:12px;color:var(--text-faint);margin-bottom:14px;">No sessions logged yet.</div>';
 
-  const volChart=hist.length>=2?`<div style="margin-bottom:14px;">
+  const volChart=hist.length>=1?`<div style="margin-bottom:14px;">
     <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Volume per Session</div>
     ${svgBars(hist.map(h=>h.vol),'#e67e22')}
   </div>`:'';
@@ -7013,7 +7023,7 @@ function rFitTargets(){
     const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
     const perDB=(!isBW&&isDB)?'<span style="font-size:9px;color:var(--text-faint);margin-left:3px;">per DB</span>':'';
     const unit_lbl=isBW?(isSec?'sec':'reps'):'lbs';
-    return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+    return`<div onclick="fitOpenExerciseDetail('${ex.id}')" style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div>
           <div style="font-size:13px;">${esc(ex.name)}</div>
@@ -7773,6 +7783,21 @@ function applyData(d){
     Object.keys(fitSchedule).forEach(k=>{if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&k<_todayStr)delete fitSchedule[k];});
   }
   if(d.fitSessions)fitSessions=d.fitSessions;
+  // Retroactively update targetWeight from best logged weight across all saved sessions
+  fitSessions.forEach(s=>{
+    if(s.type!=='lifting')return;
+    (s.items||[]).forEach(item=>{
+      const ex=fitExercises.find(x=>x.id===(item.exId||item.id));
+      if(!ex)return;
+      const isBW=(ex.unit||'lbs')==='bw'||(ex.unit||'lbs')==='sec';
+      if(isBW)return;
+      const vals=(item.sets||[]).filter(s=>s&&s.reps>0&&(s.weightKg||0)>0).map(s=>s.weightKg);
+      if(!vals.length)return;
+      const bestKg=Math.max(...vals);
+      const bestDisplay=(ex.targetWeightUnit||'lbs')==='lbs'?Math.round(fitKgToLbs(bestKg)*2)/2:Math.round(bestKg*4)/4;
+      if(bestDisplay>(ex.targetWeight||0))ex.targetWeight=bestDisplay;
+    });
+  });
   if(typeof d.fitRunSessionIdx==='number')fitRunSessionIdx=d.fitRunSessionIdx;
   if(Array.isArray(d.bodyMetrics))bodyMetrics=d.bodyMetrics;
   if(d.fitActiveSession!==undefined){
