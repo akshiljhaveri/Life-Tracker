@@ -1223,7 +1223,7 @@ details>summary::marker{display:none;}
     <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:.25rem;">
       <div id="fit-sheet-exname" style="font-family:'Fraunces',serif;font-size:20px;font-weight:400;flex:1;"></div>
       <!-- per-set kg/lbs toggle -->
-      <div style="display:flex;border-radius:var(--rs);overflow:hidden;border:1px solid var(--border-md);">
+      <div id="fit-sheet-unit-toggle" style="display:flex;border-radius:var(--rs);overflow:hidden;border:1px solid var(--border-md);">
         <button id="fit-sheet-kg-btn"  onclick="fitSetSheetUnit('kg')"  style="padding:4px 10px;font-family:'DM Sans',sans-serif;font-size:12px;border:none;cursor:pointer;background:var(--accent);color:#F5F3EE;font-weight:500;">kg</button>
         <button id="fit-sheet-lbs-btn" onclick="fitSetSheetUnit('lbs')" style="padding:4px 10px;font-family:'DM Sans',sans-serif;font-size:12px;border:none;cursor:pointer;background:var(--surface2);color:var(--text-muted);">lbs</button>
       </div>
@@ -1232,7 +1232,7 @@ details>summary::marker{display:none;}
     <div id="fit-sheet-prev" style="font-size:12px;color:var(--text-faint);margin-bottom:1rem;"></div>
     <div id="fit-sheet-sets" style="display:flex;flex-direction:column;gap:0;margin-bottom:1rem;max-height:180px;overflow-y:auto;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.6rem;">
-      <div>
+      <div id="fit-weight-section">
         <div id="fit-weight-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:5px;">Weight (kg)</div>
         <input type="number" id="fit-inp-weight" inputmode="decimal" min="0" step="0.5"
           style="width:100%;font-family:'DM Sans',sans-serif;font-size:28px;font-weight:500;text-align:center;border:2px solid var(--border-md);border-radius:var(--r);padding:12px 8px;background:var(--surface2);color:var(--text);outline:none;-webkit-appearance:none;box-sizing:border-box;"
@@ -1240,7 +1240,7 @@ details>summary::marker{display:none;}
         <div id="fit-weight-conv" style="font-size:11px;color:var(--text-faint);text-align:center;margin-top:3px;min-height:16px;"></div>
       </div>
       <div>
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:5px;">Reps</div>
+        <div id="fit-reps-label" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);margin-bottom:5px;">Reps</div>
         <input type="number" id="fit-inp-reps" inputmode="numeric" min="1" step="1"
           style="width:100%;font-family:'DM Sans',sans-serif;font-size:28px;font-weight:500;text-align:center;border:2px solid var(--border-md);border-radius:var(--r);padding:12px 8px;background:var(--surface2);color:var(--text);outline:none;-webkit-appearance:none;box-sizing:border-box;"
           onfocus="this.select()" onkeydown="if(event.key==='Enter')fitLogSet()"/>
@@ -1913,7 +1913,7 @@ const FIT_DEFAULT_EXERCISES=[
   // ABS
   {id:'dex_66',name:'Crunch',muscles:['Abs'],sw:0,sr:15,gw:0,gr:25,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=crunch+ab+proper+form+tutorial'},
   {id:'dex_67',name:'Cable Crunch',muscles:['Abs'],sw:25,sr:15,gw:50,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=cable+crunch+form+tutorial'},
-  {id:'dex_68',name:'Plank',muscles:['Abs','Front Delt'],sw:0,sr:30,gw:0,gr:60,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=plank+proper+form+tutorial'},
+  {id:'dex_68',name:'Plank',muscles:['Abs','Front Delt'],sw:0,sr:30,gw:0,gr:60,sets:3,unit:'sec',youtube:'https://www.youtube.com/results?search_query=plank+proper+form+tutorial'},
   {id:'dex_69',name:'Hanging Leg Raise',muscles:['Abs'],sw:0,sr:6,gw:0,gr:12,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=hanging+leg+raise+form+tutorial'},
   {id:'dex_70',name:'Ab Wheel Rollout',muscles:['Abs','Lats','Front Delt'],sw:0,sr:5,gw:0,gr:10,sets:3,unit:'bw',youtube:'https://www.youtube.com/results?search_query=ab+wheel+rollout+form+tutorial'},
   {id:'dex_71',name:'Russian Twist',muscles:['Abs'],sw:10,sr:15,gw:20,gr:15,sets:3,unit:'lbs',youtube:'https://www.youtube.com/results?search_query=russian+twist+form+tutorial'},
@@ -2051,8 +2051,9 @@ let fitGroups=[];
 let fitSchedule={};
 let fitSessions=[];
 let fitActiveSession=null;
-let fitCurrentExId=null;   // exercise id whose set sheet is open
-let fitCurrentIsDB=false;  // true when the open exercise is a dumbbell exercise
+let fitCurrentExId=null;      // exercise id whose set sheet is open
+let fitCurrentIsDB=false;     // true when the open exercise is a dumbbell exercise
+let fitCurrentIsTimed=false;  // true when the open exercise is time-based (unit:'sec')
 let fitTab='dash';         // 'dash'|'today'|'running'|'schedule'|'groups'|'exercises'|'history'
 let fitScheduleView='week'; // 'week'|'calendar'
 let fitHistoryView='list';  // 'list'|'calendar'
@@ -2131,7 +2132,7 @@ function sv(v){
   curV=v;
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('a'));
   document.getElementById('view-'+v).classList.add('a');
-  document.querySelectorAll('.nt').forEach((e,i)=>e.classList.toggle('a',['tasks','today','kanban','timeblock','goals','calendar','dashboard','archive','fitness','templates','search'][i]===v));
+  document.querySelectorAll('.nt').forEach(e=>e.classList.toggle('a',e.getAttribute('onclick')==="sv('"+v+"')"));
   if(v==='dashboard')rDash();else if(v==='archive')rArc();else if(v==='today')rToday();
   else if(v==='calendar')rCal();else if(v==='templates')rTemplates();else if(v==='search')rSearch();
   else if(v==='kanban')rKanban();else if(v==='timeblock')rTimeblock();else if(v==='goals')rGoals();
@@ -4176,6 +4177,7 @@ function fitFmtElapsed(ms){const t=Math.floor(ms/1000);const m=Math.floor(t/60);
 function fitKgToLbs(kg){return Math.round(kg*2.2046*10)/10;}
 function fitLbsToKg(lbs){return Math.round(lbs/2.2046*100)/100;}
 function fitFmtWeight(weightKg,unit){
+  if(unit==='sec')return 'BW';
   if(unit==='lbs')return fitKgToLbs(weightKg)+' lbs';
   return weightKg+' kg';
 }
@@ -4234,11 +4236,11 @@ function rFitToday(){
       const emoji=g?.muscles?.includes('Chest')||g?.muscles?.includes('Triceps')?'💪':g?.muscles?.includes('Lats')?'🏋️':g?.muscles?.includes('Quads')?'🦵':'💪';
       const exRows=exIds.map(eid=>{
         const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
-        const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+        const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
         const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 5px;border-radius:8px;background:var(--surface2);">${esc(m)}</span>`).join(' ');
         return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
           <div><div style="font-size:13px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:2px;">${muscles}</div></div>
-          <div style="text-align:right;">${isBW?`<div style="font-size:12px;font-weight:500;color:var(--accent);">BW × ${r} reps</div>`:`<div style="font-size:12px;font-weight:500;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:11px;color:var(--text-faint);">${s} sets</div></div>
+          <div style="text-align:right;">${isBW?`<div style="font-size:12px;font-weight:500;color:var(--accent);">BW × ${r} ${isSec?'sec':'reps'}</div>`:`<div style="font-size:12px;font-weight:500;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:11px;color:var(--text-faint);">${s} sets</div></div>
         </div>`;
       }).join('');
       html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:12px;">
@@ -4381,7 +4383,8 @@ function rFitSessionCards(){
       if(gname!=='__ungrouped__')cardsHTML+=`<div class="fit-group-label">${esc(gname)}</div>`;
       items.forEach(item=>{
         const sets=item.sets||[];
-        const setsRows=sets.map((s,i)=>`<tr><td>${i+1}</td><td>${fitFmtWeight(s.weightKg,s.unit)}</td><td>${s.reps} reps</td><td><button class="fit-set-del" onclick="fitDelSet('${item.id}',${i})">×</button></td></tr>`).join('');
+        const isSecItem=item.unit==='sec';
+        const setsRows=sets.map((s,i)=>`<tr><td>${i+1}</td><td>${isSecItem?'BW':fitFmtWeight(s.weightKg,s.unit)}</td><td>${s.reps} ${isSecItem?'sec':'reps'}</td><td><button class="fit-set-del" onclick="fitDelSet('${item.id}',${i})">×</button></td></tr>`).join('');
         cardsHTML+=`<div class="fit-ex-card">
           <div class="fit-ex-card-head">
             <div class="fit-ex-card-name">${esc(item.name)}</div>
@@ -4389,7 +4392,7 @@ function rFitSessionCards(){
             <button class="fit-log-btn" onclick="fitOpenSetSheet('${item.id}')">+ Set</button>
             <button class="fit-ghost-btn" onclick="fitRemoveSessionItem('${item.id}')" style="padding:6px 10px;font-size:12px;">✕</button>
           </div>
-          ${sets.length?`<table class="fit-sets-table"><thead><tr><th>#</th><th>Weight</th><th>Reps</th><th></th></tr></thead><tbody>${setsRows}</tbody></table>`:''}
+          ${sets.length?`<table class="fit-sets-table"><thead><tr><th>#</th><th>Weight</th><th>${isSecItem?'Sec':'Reps'}</th><th></th></tr></thead><tbody>${setsRows}</tbody></table>`:''}
         </div>`;
       });
     });
@@ -4482,30 +4485,52 @@ function fitOpenSetSheet(itemId){
   fitCurrentExId=itemId;
   const item=fitActiveSession.items.find(x=>x.id===itemId);if(!item)return;
   fitCurrentIsDB=/dumbbell/i.test(item.name);
+  fitCurrentIsTimed=item.unit==='sec';
   document.getElementById('fit-sheet-exname').textContent=item.name;
+  // Show/hide weight section for timed exercises
+  const wSect=document.getElementById('fit-weight-section');
+  const repsLbl=document.getElementById('fit-reps-label');
+  const unitToggle=document.getElementById('fit-sheet-unit-toggle');
+  if(wSect)wSect.style.display=fitCurrentIsTimed?'none':'';
+  if(repsLbl)repsLbl.textContent=fitCurrentIsTimed?'Seconds':'Reps';
+  if(unitToggle)unitToggle.style.display=fitCurrentIsTimed?'none':'';
   // Show progressive overload target
   const tgt=fitGetTarget(item.exId);
   const tgtEl=document.getElementById('fit-sheet-target');
-  if(tgtEl&&tgt&&tgt.weight>0){
+  if(tgtEl&&tgt&&(fitCurrentIsTimed?tgt.reps>0:tgt.weight>0)){
     const rr=tgt.repRange||{min:8,max:12};
     const isAtMax=tgt.reps>=rr.max;
     tgtEl.className='fit-target-badge'+(isAtMax?' fit-target-up':'');
     tgtEl.style.display='inline-flex';
-    tgtEl.textContent=(isAtMax?'⬆ Push for: ':'🎯 Target: ')+tgt.weight+tgt.unit+(fitCurrentIsDB?' / DB':'')+' × '+tgt.reps+' reps';
+    tgtEl.textContent=fitCurrentIsTimed
+      ?(isAtMax?'⬆ Push for: ':'🎯 Target: ')+tgt.reps+' sec'
+      :(isAtMax?'⬆ Push for: ':'🎯 Target: ')+tgt.weight+tgt.unit+(fitCurrentIsDB?' / DB':'')+' × '+tgt.reps+' reps';
   } else if(tgtEl){tgtEl.style.display='none';}
   // Use last set from current session first, then fall back to last session
   const currentLast=item.sets.length?item.sets[item.sets.length-1]:null;
   const histLast=fitGetLastSet(item.exId);
   const prefill=currentLast||histLast;
   // Pre-fill with target weight if no history
-  const tgtWeightKg=tgt&&tgt.weight>0?(tgt.unit==='lbs'?fitLbsToKg(tgt.weight):tgt.weight):null;
-  const prevText=histLast&&!currentLast?'Last session: '+fitFmtWeight(histLast.weightKg,histLast.unit)+' × '+histLast.reps+' reps'
-    :currentLast?'Previous set: '+fitFmtWeight(currentLast.weightKg,currentLast.unit)+' × '+currentLast.reps+' reps'
-    :'No previous data';
+  const tgtWeightKg=tgt&&tgt.weight>0&&!fitCurrentIsTimed?(tgt.unit==='lbs'?fitLbsToKg(tgt.weight):tgt.weight):null;
+  let prevText;
+  if(fitCurrentIsTimed){
+    prevText=histLast&&!currentLast?'Last session: '+histLast.reps+' sec'
+      :currentLast?'Previous set: '+currentLast.reps+' sec'
+      :'No previous data';
+  } else {
+    prevText=histLast&&!currentLast?'Last session: '+fitFmtWeight(histLast.weightKg,histLast.unit)+' × '+histLast.reps+' reps'
+      :currentLast?'Previous set: '+fitFmtWeight(currentLast.weightKg,currentLast.unit)+' × '+currentLast.reps+' reps'
+      :'No previous data';
+  }
   document.getElementById('fit-sheet-prev').textContent=prevText;
-  fitSheetUnit=prefill?prefill.unit:(tgt?tgt.unit:'lbs');
-  fitSetSheetUnit(fitSheetUnit);
-  if(prefill){
+  if(!fitCurrentIsTimed){
+    fitSheetUnit=prefill?prefill.unit:(tgt?tgt.unit:'lbs');
+    fitSetSheetUnit(fitSheetUnit);
+  }
+  if(fitCurrentIsTimed){
+    document.getElementById('fit-inp-weight').value='';
+    document.getElementById('fit-inp-reps').value=prefill?prefill.reps:(item.targetReps||30);
+  } else if(prefill){
     document.getElementById('fit-inp-weight').value=fitSheetUnit==='kg'?prefill.weightKg:fitKgToLbs(prefill.weightKg);
     document.getElementById('fit-inp-reps').value=prefill.reps;
   } else if(tgtWeightKg){
@@ -4515,20 +4540,21 @@ function fitOpenSetSheet(itemId){
     document.getElementById('fit-inp-weight').value='';
     document.getElementById('fit-inp-reps').value='';
   }
-  fitUpdateWeightConv();
+  if(!fitCurrentIsTimed)fitUpdateWeightConv();
   fitRenderSheetSets(item);
   document.getElementById('fit-set-sheet').style.display='';
-  setTimeout(()=>document.getElementById('fit-inp-weight').focus(),120);
+  setTimeout(()=>document.getElementById(fitCurrentIsTimed?'fit-inp-reps':'fit-inp-weight').focus(),120);
 }
 
 function fitRenderSheetSets(item){
   const el=document.getElementById('fit-sheet-sets');
   if(!item.sets.length){el.innerHTML='';return;}
+  const isSec=item.unit==='sec';
   el.innerHTML=item.sets.map((s,i)=>`
     <div class="fit-sheet-set-row">
       <div class="fit-sheet-set-num">${i+1}</div>
-      <div class="fit-sheet-set-val">${fitFmtWeight(s.weightKg,s.unit)}</div>
-      <div class="fit-sheet-set-val">${s.reps} reps</div>
+      <div class="fit-sheet-set-val">${isSec?'BW':fitFmtWeight(s.weightKg,s.unit)}</div>
+      <div class="fit-sheet-set-val">${s.reps} ${isSec?'sec':'reps'}</div>
       <button class="fit-sheet-set-del" onclick="fitDelSheetSet(${i})">×</button>
     </div>`).join('');
 }
@@ -4536,16 +4562,19 @@ function fitRenderSheetSets(item){
 function fitLogSet(){
   if(!fitActiveSession||!fitCurrentExId)return;
   const item=fitActiveSession.items.find(x=>x.id===fitCurrentExId);if(!item)return;
-  const wRaw=parseFloat(document.getElementById('fit-inp-weight').value);
   const reps=parseInt(document.getElementById('fit-inp-reps').value);
-  if(isNaN(wRaw)||wRaw<0||isNaN(reps)||reps<1){alert('Enter valid weight and reps.');return;}
-  const weightKg=fitSheetUnit==='kg'?wRaw:fitLbsToKg(wRaw);
-  item.sets.push({weightKg:Math.round(weightKg*100)/100,reps,unit:fitSheetUnit});
+  if(fitCurrentIsTimed){
+    if(isNaN(reps)||reps<1){alert('Enter valid duration in seconds.');return;}
+    item.sets.push({weightKg:0,reps,unit:'sec'});
+  } else {
+    const wRaw=parseFloat(document.getElementById('fit-inp-weight').value);
+    if(isNaN(wRaw)||wRaw<0||isNaN(reps)||reps<1){alert('Enter valid weight and reps.');return;}
+    const weightKg=fitSheetUnit==='kg'?wRaw:fitLbsToKg(wRaw);
+    item.sets.push({weightKg:Math.round(weightKg*100)/100,reps,unit:fitSheetUnit});
+  }
   save();
   fitRenderSheetSets(item);
-  // Keep values filled for next set (user can adjust)
-  // just re-select weight field so they can quickly change it
-  document.getElementById('fit-inp-weight').select();
+  document.getElementById(fitCurrentIsTimed?'fit-inp-reps':'fit-inp-weight').select();
 }
 
 function fitDelSheetSet(idx){
@@ -4690,10 +4719,10 @@ function rFitSchedule(){
       // Read-only preview in recommendations (no remove/replace buttons)
       const exPreviewRows=displayExIds.map(eid=>{
         const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
-        const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+        const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
         return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
           <span style="color:var(--text-muted);">${esc(ex.name)}</span>
-          <span style="color:var(--text-faint);">${isBW?`BW × ${r} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`}</span>
+          <span style="color:var(--text-faint);">${isBW?`BW × ${r}${isSec?' sec':''} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`}</span>
         </div>`;
       }).join('');
       exerciseList=`<details style="margin-top:6px;"><summary style="font-size:11px;color:var(--text-faint);cursor:pointer;list-style:none;">${esc(rec.group.name)} · ${displayExIds.length} exercises ▸</summary><div style="margin-top:6px;">${exPreviewRows}</div></details>`;
@@ -4869,7 +4898,7 @@ function fitEditScheduleDay(dateStr){
     const gaps=g.exerciseIds.map(eid=>{
       const ex=fitExercises.find(x=>x.id===eid);const def=FIT_DEFAULT_EXERCISES.find(d=>d.id===eid);
       if(!ex&&!def)return 0;
-      const isBW=(ex?.unit||def?.unit)==='bw';
+      const isBW=(ex?.unit||def?.unit)==='bw'||(ex?.unit||def?.unit)==='sec';
       const curr=isBW?(ex?.targetReps||def?.sr||0):(ex?.targetWeight||def?.sw||0);
       const goal=isBW?(ex?.goalReps||def?.gr||0):(ex?.goalWeight||def?.gw||0);
       if(!goal||!curr)return 0;return Math.max(0,Math.min(1,1-(curr/goal)));
@@ -4902,8 +4931,8 @@ function fitEditScheduleDay(dateStr){
   if(entry){
     exRows=(entry.exerciseIds||[]).map(eid=>{
       const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
-      const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
-      const target=isBW?`BW × ${r} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`;
+      const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+      const target=isBW?`BW × ${r}${isSec?' sec':''} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`;
       const ei=eid.replace(/'/g,"\\'");const gi=entry.groupId.replace(/'/g,"\\'");const ds=dateStr.replace(/'/g,"\\'");
       return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
         <div style="min-width:0;flex:1;"><div style="font-size:13px;">${esc(ex.name)}</div><div style="font-size:10px;color:var(--text-faint);">${target}</div></div>
@@ -4948,8 +4977,8 @@ function renderDayExercisesByDate(dateStr, exIds, groupId){
   if(!exIds||!exIds.length)return'<div style="font-size:12px;color:var(--text-faint);padding:4px 0;">No exercises.</div>';
   return exIds.map(eid=>{
     const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
-    const isBW=ex.unit==='bw';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
-    const target=isBW?`BW × ${r} reps × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
+    const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+    const target=isBW?`BW × ${r} ${isSec?'sec':'reps'} × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
     const ei=eid.replace(/'/g,"\\'");const gi=groupId.replace(/'/g,"\\'");const ds=dateStr.replace(/'/g,"\\'");
     return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
       <div style="min-width:0;flex:1;"><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(ex.name)}</div><div style="font-size:10px;color:var(--text-faint);">${(ex.muscles||[]).slice(0,3).join(' · ')}</div></div>
@@ -4991,7 +5020,8 @@ function fitEditActiveSession(){
   if(!fitActiveSession)return;
   window._fitEditDate=fitActiveSession.date||td();
   const exRows=fitActiveSession.items.map((item,idx)=>{
-    const isBW=(fitExercises.find(x=>x.id===item.exId)||FIT_DEFAULT_EXERCISES.find(x=>x.id===item.exId))?.unit==='bw';
+    const _exUnit=(fitExercises.find(x=>x.id===item.exId)||FIT_DEFAULT_EXERCISES.find(x=>x.id===item.exId))?.unit;
+    const isBW=_exUnit==='bw'||_exUnit==='sec';const isSec=_exUnit==='sec';
     const tw=item.targetWeight||0;const tr=item.targetReps||8;
     return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
@@ -5003,7 +5033,7 @@ function fitEditActiveSession(){
           `<input type="number" value="${tw}" onchange="fitActiveSession.items[${idx}].targetWeight=+this.value" style="width:65px;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);"><span style="font-size:12px;color:var(--text-muted);">lbs</span>`}
         <span style="font-size:12px;color:var(--text-muted);">×</span>
         <input type="number" value="${tr}" onchange="fitActiveSession.items[${idx}].targetReps=+this.value" style="width:50px;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);">
-        <span style="font-size:12px;color:var(--text-muted);">reps · ${item.sets?.length||0} sets logged</span>
+        <span style="font-size:12px;color:var(--text-muted);">${isSec?'sec':'reps'} · ${item.sets?.length||0} sets logged</span>
       </div>
     </div>`;
   }).join('');
@@ -5057,11 +5087,11 @@ function renderDayExercises(dayName, exIds, groupId){
   return exIds.map(eid=>{
     const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);
     if(!ex)return'';
-    const isBW=ex.unit==='bw';
+    const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';
     const w=ex.targetWeight||ex.sw||0;
     const r=ex.targetReps||ex.sr||8;
     const s=ex.defaultSets||ex.sets||3;
-    const target=isBW?`BW × ${r} reps × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
+    const target=isBW?`BW × ${r} ${isSec?'sec':'reps'} × ${s} sets`:`${w} lbs × ${r} reps × ${s} sets`;
     const dn=dayName.replace(/'/g,"\\'");
     const gi=groupId.replace(/'/g,"\\'");
     const ei=eid.replace(/'/g,"\\'");
@@ -5774,7 +5804,7 @@ function fitOpenExerciseDetail(exId){
   const ex=fitExercises.find(x=>x.id===exId)||FIT_DEFAULT_EXERCISES.find(x=>x.id===exId);
   if(!ex)return;
   const hist=getExerciseHistory(exId);
-  const isBW=ex.unit==='bw';
+  const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';
 
   const bestW=hist.length?Math.max(...hist.map(h=>h.bestW)):0;
   const bestR=hist.length?Math.max(...hist.map(h=>h.bestR)):0;
@@ -5783,9 +5813,9 @@ function fitOpenExerciseDetail(exId){
 
   const prRow=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">
     ${[
-      ['Best weight',bestW?(bestW+'lbs'):'—'],
-      ['Best reps',bestR||'—'],
-      ['Best vol',bestVol?(bestVol+'lbs'):'—'],
+      ['Best weight',!isBW&&bestW?(bestW+'lbs'):'—'],
+      [isSec?'Best sec':'Best reps',bestR||'—'],
+      ['Best vol',!isBW&&bestVol?(bestVol+'lbs'):'—'],
       ['Sessions',totalSessions||'—']
     ].map(([l,v])=>`<div style="background:var(--surface2);border-radius:8px;padding:8px 6px;text-align:center;">
       <div style="font-size:14px;font-weight:600;color:var(--accent);">${v}</div>
@@ -5808,7 +5838,7 @@ function fitOpenExerciseDetail(exId){
     <div style="font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Recent Sessions</div>
     ${recent.map(h=>{
       const d=new Date(h.date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-      const best=isBW?`BW × ${h.bestR} reps`:`${h.bestW} lbs × ${h.bestR}`;
+      const best=isBW?`BW × ${h.bestR} ${isSec?'sec':'reps'}`:`${h.bestW} lbs × ${h.bestR}`;
       return`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;gap:8px;">
         <span style="color:var(--text-muted);white-space:nowrap;">${d}</span>
         <span style="flex:1;">${best}</span>
@@ -6110,7 +6140,8 @@ function fitRenderHistoryList(){
     const exRows=(s.items||[]).filter(e=>e&&Array.isArray(e.sets)&&e.sets.length).map(e=>{
       const validSets=e.sets.filter(b=>b&&typeof b==='object');
       const best=validSets.length?validSets.reduce((a,b)=>(b.weightKg||0)>(a.weightKg||0)?b:a,validSets[0]):{weightKg:0,unit:'kg',reps:0};
-      return `<div class="fit-hist-ex-row">${esc(e.name)}: ${e.sets.length} sets · best ${fitFmtWeight(best.weightKg||0,best.unit||'kg')} × ${best.reps||0} reps</div>`;
+      const isBestSec=best.unit==='sec';
+      return `<div class="fit-hist-ex-row">${esc(e.name)}: ${e.sets.length} sets · best ${isBestSec?'BW':fitFmtWeight(best.weightKg||0,best.unit||'kg')} × ${best.reps||0} ${isBestSec?'sec':'reps'}</div>`;
     }).join('');
     return `<div class="fit-hist-card">
       <div class="fit-hist-head">
@@ -6773,7 +6804,7 @@ function fitGetRecommendation(dateStr,simHistory){
       const ex=fitExercises.find(x=>x.id===eid);
       const def=FIT_DEFAULT_EXERCISES.find(d=>d.id===eid);
       if(!ex&&!def)return 0;
-      const isBW=(ex?.unit||def?.unit)==='bw';
+      const isBW=(ex?.unit||def?.unit)==='bw'||(ex?.unit||def?.unit)==='sec';
       const curr=isBW?(ex?.targetReps||def?.sr||0):(ex?.targetWeight||def?.sw||0);
       const goal=isBW?(ex?.goalReps||def?.gr||0):(ex?.goalWeight||def?.gw||0);
       if(!goal||!curr)return 0;
@@ -6820,7 +6851,7 @@ function rFitTargets(){
   const grpProgress={};
   Object.entries(muscleGroups).forEach(([grp,exes])=>{
     const vals=exes.map(ex=>{
-      const isBW=(ex.unit||'lbs')==='bw';
+      const isBW=(ex.unit||'lbs')==='bw'||(ex.unit||'lbs')==='sec';
       if(isBW){
         const goal=ex.goalReps||ex.gr||0;
         return goal?Math.min(100,Math.round((ex.targetReps||ex.sr||0)/goal*100)):0;
@@ -6845,7 +6876,7 @@ function rFitTargets(){
     </div>`;
   }).join('');
   const exRows=fitExercises.filter(ex=>(ex.gw||ex.goalWeight||ex.gr||ex.goalReps)).filter(ex=>!ex.muscles||ex.muscles[0]!=='Cardio').map(ex=>{
-    const isBW=(ex.unit||'lbs')==='bw';
+    const isBW=(ex.unit||'lbs')==='bw'||(ex.unit||'lbs')==='sec';const isSec=(ex.unit||'lbs')==='sec';
     const isDB=/dumbbell/i.test(ex.name);
     const current=isBW?(ex.targetReps||ex.sr||0):(ex.targetWeight||ex.sw||0);
     const goal=isBW?(ex.goalReps||ex.gr||0):(ex.goalWeight||ex.gw||0);
@@ -6853,6 +6884,7 @@ function rFitTargets(){
     const pct=Math.min(100,Math.round(current/goal*100));
     const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
     const perDB=(!isBW&&isDB)?'<span style="font-size:9px;color:var(--text-faint);margin-left:3px;">per DB</span>':'';
+    const unit_lbl=isBW?(isSec?'sec':'reps'):'lbs';
     return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div>
@@ -6860,7 +6892,7 @@ function rFitTargets(){
           <div style="font-size:10px;color:var(--text-faint);">${(ex.muscles||[]).slice(0,3).join(' · ')}</div>
         </div>
         <div style="text-align:right;font-size:12px;">
-          <div style="color:${color};font-weight:500;">${isBW?current+' reps':current+' lbs'} → ${isBW?goal+' reps':goal+' lbs'}${perDB}</div>
+          <div style="color:${color};font-weight:500;">${current+' '+unit_lbl} → ${goal+' '+unit_lbl}${perDB}</div>
           <div style="color:var(--text-faint);">${pct}%</div>
         </div>
       </div>
@@ -7562,6 +7594,8 @@ function applyData(d){
       if(!ex.goalReps&&def.gr){ex.goalReps=def.gr;}
       if(!ex.defaultSets&&def.sets){ex.defaultSets=def.sets;}
       if(!ex.unit&&def.unit){ex.unit=def.unit;}
+      // Migrate Plank from old 'bw' to 'sec'
+      if(ex.id==='dex_68'&&ex.unit==='bw')ex.unit='sec';
       if(!ex.sw&&def.sw){ex.sw=def.sw;}
       if(!ex.sr&&def.sr){ex.sr=def.sr;}
     });
