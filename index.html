@@ -5188,7 +5188,7 @@ function fitRenderScheduleWeek(){
       return e;
     });
     const liftEntry=entries.find(x=>x.type==='lifting');
-    const runEntry=entries.find(x=>x.type==='run');
+    const runEntry=entries.find(x=>x.type==='run'||x.type==='cardio');
     const recovEntry=entries.find(x=>x.type==='recovery');
     const restEntry=entries.find(x=>x.type==='rest');
     const hasEntry=entries.length>0;
@@ -5261,6 +5261,15 @@ function fitRenderScheduleWeek(){
           <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:13px;font-weight:500;">😴 Rest Day</span>${editBtn}</div>
         </div>
         <button onclick="fitClearScheduleDate('${dateStr}')" style="margin:0 16px 12px;font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);color:var(--text-muted);background:none;cursor:pointer;">✕ Remove</button>
+      </div>`;
+    } else if(hasEntry){
+      // Fallback: unrecognised entry type — still render the day card with Edit
+      html+=`<div class="fit-day-card"${isToday?' style="border-color:var(--accent);"':''}>
+        <div class="fit-day-head">
+          <div><div class="fit-day-name">${esc(dayName)} <span style="font-size:11px;color:var(--text-faint);font-family:'DM Sans',sans-serif;">${dateLabel}</span>${todayBadge}</div>${workedBadge}</div>
+          ${editBtn}
+        </div>
+        <div style="padding:6px 16px 12px;font-size:12px;color:var(--text-faint);">Workout scheduled</div>
       </div>`;
     }
   }
@@ -5844,7 +5853,11 @@ function fitReplaceInactiveExercise(exId){
 
 function rFitExercises(){
   const el=document.getElementById('fit-exercises-panel');if(!el)return;
-  const search=(document.getElementById('fit-ex-search-inp')?.value||'').toLowerCase().trim();
+  const prevInp=document.getElementById('fit-ex-search-inp');
+  const wasSearchFocused=document.activeElement===prevInp;
+  const selStart=prevInp?.selectionStart??null;
+  const selEnd=prevInp?.selectionEnd??null;
+  const search=(prevInp?.value||'').toLowerCase().trim();
   const allEx=[...fitExercises];
   const activeEx=allEx.filter(ex=>ex.active!==false&&(!search||ex.name.toLowerCase().includes(search)||(ex.muscles||[]).some(m=>m.toLowerCase().includes(search))));
   const inactiveEx=allEx.filter(ex=>ex.active===false&&(!search||ex.name.toLowerCase().includes(search)||(ex.muscles||[]).some(m=>m.toLowerCase().includes(search))));
@@ -5886,6 +5899,10 @@ function rFitExercises(){
   ${activeHTML}
   ${inactiveEx.length?`<div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px;">Inactive (${inactiveEx.length})</div>
   <div style="opacity:.7;">${inactiveHTML}</div>`:''}`;
+  if(wasSearchFocused){
+    const inp=document.getElementById('fit-ex-search-inp');
+    if(inp){inp.focus();if(selStart!==null)inp.setSelectionRange(selStart,selEnd);}
+  }
 }
 
 function fitOpenNewExercise(){
