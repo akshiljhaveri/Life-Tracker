@@ -1613,12 +1613,17 @@ details>summary::marker{display:none;}
 <!-- EXPORT MODAL -->
 <div class="mo" id="exm">
   <div class="modal">
-    <div class="mt">Export tasks</div>
+    <div class="mt">Export &amp; Import</div>
     <div class="eo">
       <button class="eop" onclick="expJSON()"><strong>JSON file</strong><span>Full backup</span></button>
       <button class="eop" onclick="expCSV()"><strong>CSV spreadsheet</strong><span>Excel / Sheets</span></button>
       <button class="eop" onclick="expTXT()"><strong>Plain text</strong><span>Simple list</span></button>
     </div>
+    <div style="margin:12px 0 4px;font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;">Restore</div>
+    <div class="eo">
+      <button class="eop" onclick="impJSON()"><strong>Import JSON backup</strong><span>Restore all data from file</span></button>
+    </div>
+    <input type="file" id="import-json-inp" accept=".json" style="display:none" onchange="handleImportJSON(event)">
     <div class="ma"><button class="btn" onclick="closeM('exm')">Close</button></div>
   </div>
 </div>
@@ -3066,6 +3071,32 @@ function expJSON(){dl(JSON.stringify({tasks,sublists,uCats,archive,templates,goa
 function expCSV(){const rows=[['Text','Category','Sub-list','Priority','Due','Est(mins)','Done','Recurring','Tags','Note']];tasks.forEach(t=>{const c=cat(t.cat);const sl=getSLN(t.cat,t.sublistId)||'';rows.push([`"${t.text.replace(/"/g,'""')}"`,c.label,sl,t.priority||'',t.due||'',t.est||'',t.done?'Yes':'No',t.recurring||'',`"${(t.tags||[]).join(', ')}"`,`"${(t.note||'').replace(/"/g,'""')}"`]);});dl(rows.map(r=>r.join(',')).join('\n'),'my-tasks.csv','text/csv');}
 function expTXT(){const lines=[];uCats.forEach(c=>{const ct=tasks.filter(t=>t.cat===c.id);if(!ct.length)return;lines.push(`\n── ${c.label.toUpperCase()} ──`);ct.forEach(t=>lines.push(`  ${t.done?'✓':'○'} ${t.text}${t.due?' ('+fDue(t.due)+')':''}${t.est?' [~'+fmtMins(t.est)+']':''}${(t.tags||[]).length?' #'+t.tags.join(' #'):''}}`));});dl(lines.join('\n').trim(),'my-tasks.txt','text/plain');}
 function dl(content,fn,mime){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:mime}));a.download=fn;a.click();closeM('exm');}
+function impJSON(){document.getElementById('import-json-inp').click();}
+function handleImportJSON(e){
+  const f=e.target.files[0];if(!f)return;
+  e.target.value='';
+  const r=new FileReader();
+  r.onload=function(ev){
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!d||typeof d!=='object')throw new Error('Invalid format');
+      if(!confirm('This will replace ALL current data with the backup. This cannot be undone.\n\nContinue?'))return;
+      applyData(d);
+      save();
+      applySettings();
+      if(curV==='tasks')render();
+      else if(curV==='today')rToday();
+      else if(curV==='dashboard')rDash();
+      else if(curV==='archive')rArc();
+      else if(curV==='calendar')rCal();
+      else if(curV==='templates')rTemplates();
+      else if(curV==='fitness')rFitness();
+      closeM('exm');
+      showToast('Backup restored successfully!');
+    }catch(err){showToast('Import failed — make sure you select a Life Tracker JSON backup file.');}
+  };
+  r.readAsText(f);
+}
 
 // RENDER — MAIN TASKS VIEW
 function render(){
