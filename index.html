@@ -40,6 +40,7 @@
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async onload="window._gisReady=true;if(window._gisEmail)window._initDriveClient(window._gisEmail)"></script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -82,6 +83,8 @@ onAuthStateChanged(auth,async user=>{
     // Show user info
     document.getElementById('user-avatar').textContent=user.displayName?user.displayName[0].toUpperCase():'?';
     document.getElementById('user-name').textContent=user.displayName||user.email;
+    // Kick off Drive backup auth (GIS may not be loaded yet — _initDriveClient handles that)
+    if(window._initDriveClient)window._initDriveClient(user.email);else window._gisEmail=user.email;
     // Subscribe to real-time updates
     if(unsub)unsub();
     unsub=onSnapshot(doc(db,'users',uid,'data','main'),snap=>{
@@ -855,6 +858,7 @@ details>summary::marker{display:none;}
     <div class="user-av" id="user-avatar">?</div>
     <div class="user-nm" id="user-name">Signed in</div>
     <div class="sync-dot" id="sync-dot" title="Synced"></div>
+    <button id="drive-auth-btn" class="signout-btn" onclick="window._authDriveManual()" title="Connect Google Drive backup" style="display:none;color:rgba(245,243,238,.75);">☁️ Drive</button>
     <button class="signout-btn" onclick="location.reload()" title="Refresh app">↺</button>
     <button class="signout-btn" onclick="window._fbSignOut()">Sign out</button>
   </div>
@@ -7407,6 +7411,72 @@ const MUSCLE_IMG_B64='data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAS
 
 // ── FIREBASE SYNC ──────────────────────────────────────────────────────────
 function getState(){return{tasks,sublists,uCats,archive,streak,gamification,templates,settings,taskHistory,goals,timeblocks,missions,briefingDismissed,fitExercises,fitGroups,fitSchedule,fitSessions,fitActiveSession,fitRunSessionIdx,bodyMetrics};}
+
+// ─── GOOGLE DRIVE AUTO-BACKUP ───────────────────────────────────────────────
+const _DRIVE_CLIENT_ID='366375229247-ge4ujuvicsfhtl6p55bmrk7qoeds03c1.apps.googleusercontent.com';
+let _driveTokenClient=null,_driveToken=null,_driveTokenExpiry=0;
+
+window._initDriveClient=function(email){
+  if(!window.google?.accounts?.oauth2){window._gisEmail=email;return;}
+  _driveTokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:_DRIVE_CLIENT_ID,
+    scope:'https://www.googleapis.com/auth/drive.file',
+    hint:email,
+    callback:function(resp){
+      if(resp.error){
+        // Show connect button so user can manually grant on next interaction
+        const btn=document.getElementById('drive-auth-btn');
+        if(btn)btn.style.display='inline';
+        return;
+      }
+      _driveToken=resp.access_token;
+      _driveTokenExpiry=Date.now()+(resp.expires_in-60)*1000;
+      const btn=document.getElementById('drive-auth-btn');
+      if(btn)btn.style.display='none';
+      _driveAutoBackup();
+    }
+  });
+  _driveTokenClient.requestAccessToken({prompt:''});
+};
+window._authDriveManual=function(){
+  if(_driveTokenClient)_driveTokenClient.requestAccessToken({prompt:'consent'});
+};
+
+async function _driveGetFolder(){
+  const q=encodeURIComponent("name='Life Tracker Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,{headers:{Authorization:'Bearer '+_driveToken}});
+  const d=await r.json();
+  if(d.files?.length)return d.files[0].id;
+  const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+_driveToken,'Content-Type':'application/json'},body:JSON.stringify({name:'Life Tracker Backups',mimeType:'application/vnd.google-apps.folder'})});
+  return(await cr.json()).id||null;
+}
+async function _driveFindFile(folderId,name){
+  const q=encodeURIComponent(`name='${name}' and '${folderId}' in parents and trashed=false`);
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,{headers:{Authorization:'Bearer '+_driveToken}});
+  return(await r.json()).files?.[0]?.id||null;
+}
+async function _driveAutoBackup(){
+  if(!_driveToken||Date.now()>_driveTokenExpiry)return;
+  const today=new Date().toISOString().slice(0,10);
+  if(localStorage.getItem('_driveBackupDate')===today)return;
+  try{
+    const json=JSON.stringify(getState(),null,2);
+    const folderId=await _driveGetFolder();if(!folderId)return;
+    const existingId=await _driveFindFile(folderId,'life-tracker-backup.json');
+    if(existingId){
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=media`,{method:'PATCH',headers:{Authorization:'Bearer '+_driveToken,'Content-Type':'application/json'},body:json});
+    }else{
+      const meta={name:'life-tracker-backup.json',parents:[folderId],mimeType:'application/json'};
+      const form=new FormData();
+      form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+      form.append('file',new Blob([json],{type:'application/json'}));
+      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{Authorization:'Bearer '+_driveToken},body:form});
+    }
+    localStorage.setItem('_driveBackupDate',today);
+    showToast('☁️ Backed up to Google Drive');
+  }catch(e){console.warn('Drive backup failed:',e);}
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 function save(){
   const state=getState();
