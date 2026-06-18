@@ -678,8 +678,8 @@ body.dark{
 .fit-pill-btn:active{opacity:.8;}
 .fit-ghost-btn{padding:7px 13px;border-radius:var(--rs);background:var(--surface2);color:var(--text-muted);border:1px solid var(--border-md);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 /* exercise chips (inside group cards) */
-.fit-ex-chip{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:var(--rs);border:1px solid var(--border);}
-.fit-ex-chip-name{flex:1;font-size:13px;color:var(--text);}
+.fit-ex-chip{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border-radius:var(--rs);border:1px solid var(--border-md);}
+.fit-ex-chip-name{flex:1;font-size:14px;color:var(--text);}
 .fit-ex-chip-sub{font-size:11px;color:var(--text-faint);}
 /* schedule day cards */
 .fit-day-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden;}
@@ -4274,17 +4274,19 @@ function rFitToday(){
       const exRows=exIds.map(eid=>{
         const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
         const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
-        const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 5px;border-radius:8px;background:var(--surface2);">${esc(m)}</span>`).join(' ');
-        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-          <div><div style="font-size:13px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:2px;">${muscles}</div></div>
-          <div style="text-align:right;">${isBW?`<div style="font-size:12px;font-weight:500;color:var(--accent);">BW × ${r} ${isSec?'sec':'reps'}</div>`:`<div style="font-size:12px;font-weight:500;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:11px;color:var(--text-faint);">${s} sets</div></div>
+        const mc=FIT_MUSCLE_COLORS[(ex.muscles||[])[0]]||FIT_MUSCLE_COLORS['Other'];
+        const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:${mc.bg};color:${mc.c};">${esc(m)}</span>`).join(' ');
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div><div style="font-size:14px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:3px;">${muscles}</div></div>
+          <div style="text-align:right;">${isBW?`<div style="font-size:13px;font-weight:600;color:var(--accent);">BW × ${r} ${isSec?'sec':'reps'}</div>`:`<div style="font-size:13px;font-weight:600;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:10.5px;color:var(--text-faint);">${s} sets</div></div>
         </div>`;
       }).join('');
-      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div style="font-size:16px;font-weight:600;">${emoji} ${esc(g?.name||'Workout')}</div>
+      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:18px 20px;margin-bottom:12px;">
+        <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Today's Session</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:400;">${emoji} ${esc(g?.name||'Workout')}</div>
           <div style="display:flex;gap:6px;">
-            <button onclick="fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;">✏️ Edit</button>
+            <button onclick="fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--text-muted);">✏️ Edit</button>
             <button onclick="fitStartWorkoutFromSchedule('${dateStr}')" style="font-size:12px;padding:5px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
           </div>
         </div>
@@ -4863,11 +4865,11 @@ function rFitSchedule(){
     </div>`;
   }).join('');
   const toggleHTML=`<div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.75rem;">Schedule</div>
-  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
-    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">Next 7 days — smart recommendations</div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:16px 18px;margin-bottom:1rem;">
+    <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.1em;">Next 7 days — Smart Recommendations</div>
     ${planRows}
   </div>
-  <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;">Custom schedule overrides</div>
+  <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">Your Schedule</div>
   <div class="fit-view-toggle">
     <button class="fit-view-toggle-btn${fitScheduleView==='week'?' a':''}" onclick="fitSetScheduleView('week')">Week</button>
     <button class="fit-view-toggle-btn${fitScheduleView==='calendar'?' a':''}" onclick="fitSetScheduleView('calendar')">Calendar</button>
@@ -6034,7 +6036,7 @@ function rFitExercises(){
     const toggleColor=isActive?'#c0392b':'#219150';
     const badges=muscles.map(m=>`<span style="font-size:10px;padding:1px 7px;border-radius:8px;background:${mc.bg};color:${mc.c};">${esc(m)}</span>`).join('');
     const ytBtn=ex.youtube?`<a href="${esc(ex.youtube)}" target="_blank" rel="noopener" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);text-decoration:none;color:var(--text-muted);">▶</a>`:'';
-    return`<div class="fit-ex-chip" style="margin-bottom:7px;align-items:flex-start;flex-wrap:wrap;gap:6px;">
+    return`<div class="fit-ex-chip" style="margin-bottom:7px;align-items:flex-start;flex-wrap:wrap;gap:6px;border-left:3px solid ${mc.c};">
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="fitOpenExerciseDetail('${ex.id}')">
         <div class="fit-ex-chip-name" style="margin-bottom:${badges?'5px':'0'}">${esc(ex.name)}</div>
         ${badges?`<div style="display:flex;flex-wrap:wrap;gap:4px;">${badges}</div>`:''}
@@ -6059,9 +6061,9 @@ function rFitExercises(){
     </div>
   </div>
   <input id="fit-ex-search-inp" type="search" placeholder="Search exercises or muscles…" value="${esc(search)}" oninput="rFitExercises()" style="width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid var(--border-md);background:var(--surface);font-size:13px;margin-bottom:1rem;">
-  <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Active (${activeEx.length})</div>
+  <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">Active (${activeEx.length})</div>
   ${activeHTML}
-  ${inactiveEx.length?`<div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px;">Inactive (${inactiveEx.length})</div>
+  ${inactiveEx.length?`<div style="font-size:10.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;margin:16px 0 10px;">Inactive (${inactiveEx.length})</div>
   <div style="opacity:.7;">${inactiveHTML}</div>`:''}`;
   if(wasSearchFocused){
     const inp=document.getElementById('fit-ex-search-inp');
@@ -6249,7 +6251,7 @@ function fitRenderHistoryList(){
       const exNote=e.notes?`<div style="font-size:11px;color:var(--text-faint);font-style:italic;margin-top:1px;padding-left:4px;">${esc(e.notes)}</div>`:'';
       return `<div class="fit-hist-ex-row">${esc(e.name)}: ${e.sets.length} sets · best ${isBestSec?'BW':fitFmtWeight(best.weightKg||0,best.unit||'kg')} × ${best.reps||0} ${isBestSec?'sec':'reps'}${exNote}</div>`;
     }).join('');
-    return `<div class="fit-hist-card">
+    return `<div class="fit-hist-card" style="border-left:3px solid #219150;">
       <div class="fit-hist-head">
         <div class="fit-hist-name">${esc(s.name||'Workout')}</div>
         <div class="fit-hist-date">${s.date||''}</div>
@@ -7004,12 +7006,12 @@ function rFitTargets(){
   const grpCards=sortedGrps.map(([grp,pct])=>{
     const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
     const flag=pct<40?' ⚠️':'';
-    return`<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:13px;font-weight:500;">${esc(grp)}</span>
+    return`<div style="background:var(--surface);border-radius:10px;border:1px solid var(--border-md);border-left:3px solid ${color};padding:12px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:600;color:var(--text);">${esc(grp)}</span>
         <span style="font-size:11px;color:${color};font-weight:600;">${pct}%${flag}</span>
       </div>
-      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+      <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
         <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width .4s;"></div>
       </div>
     </div>`;
@@ -7029,18 +7031,19 @@ function rFitTargets(){
     const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
     const perDB=(!isBW&&isDB)?'<span style="font-size:9px;color:var(--text-faint);margin-left:3px;">per DB</span>':'';
     const unit_lbl=isBW?(isSec?'sec':'reps'):'lbs';
-    return`<div onclick="fitOpenExerciseDetail('${ex.id}')" style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+    const lastDate=_lastLogged[ex.id]?`<span style="font-size:9.5px;color:var(--text-faint);margin-left:6px;">${_lastLogged[ex.id]}</span>`:'';
+    return`<div onclick="fitOpenExerciseDetail('${ex.id}')" style="padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
         <div>
-          <div style="font-size:13px;">${esc(ex.name)}</div>
-          <div style="font-size:10px;color:var(--text-faint);">${(ex.muscles||[]).slice(0,3).join(' · ')}</div>
+          <div style="font-size:14px;font-weight:500;color:var(--text);">${esc(ex.name)}${lastDate}</div>
+          <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${(ex.muscles||[]).slice(0,3).join(' · ')}</div>
         </div>
         <div style="text-align:right;font-size:12px;">
-          <div style="color:${color};font-weight:500;">${current+' '+unit_lbl} → ${goal+' '+unit_lbl}${perDB}</div>
-          <div style="color:var(--text-faint);">${pct}%</div>
+          <div style="color:${color};font-weight:600;">${current+' '+unit_lbl} → ${goal+' '+unit_lbl}${perDB}</div>
+          <div style="color:var(--text-faint);font-size:11px;">${pct}%</div>
         </div>
       </div>
-      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+      <div style="height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">
         <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;"></div>
       </div>
     </div>`;
@@ -7048,12 +7051,12 @@ function rFitTargets(){
   el.innerHTML=`
   <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;margin-bottom:.25rem;">Targets</div>
   <div style="font-size:12px;color:var(--text-muted);margin-bottom:1rem;">3-month goals at 85 kg · 20% BF. Progress tracks current working weight vs goal.</div>
-  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
-    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em;">By Muscle Group — Imbalance View</div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:16px 18px;margin-bottom:1rem;">
+    <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.1em;">By Muscle Group — Imbalance View</div>
     <div style="display:flex;flex-direction:column;gap:8px;">${grpCards||'<div style="font-size:13px;color:var(--text-faint);">No targets set. Load default exercises first.</div>'}</div>
   </div>
-  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
-    <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">All Exercises</div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:16px 18px;margin-bottom:1rem;">
+    <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.1em;">All Exercises</div>
     ${exRows||'<div style="font-size:13px;color:var(--text-faint);">No exercises with targets found.</div>'}
   </div>`;
 }
