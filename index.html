@@ -59,6 +59,13 @@ window._fbSave=function(data,onDone,onError){
   clearTimeout(saveTimer);
   window._lastSaveAttemptMs=Date.now();
   saveTimer=setTimeout(async()=>{
+    const json=JSON.stringify(data);
+    const sizeKB=Math.round(json.length/1024);
+    if(sizeKB>900){
+      console.warn('Data size near Firestore 1MB limit:',sizeKB+'KB');
+      if(onError)onError(new Error('Data too large: '+sizeKB+'KB. Open Settings → Export to back up, then contact support.'));
+      return;
+    }
     try{await setDoc(doc(db,'users',uid,'data','main'),data);if(onDone)onDone();}
     catch(e){console.error('Save error',e);if(onError)onError(e);}
   },600);
@@ -849,6 +856,7 @@ details>summary::marker{display:none;}
     <div class="user-av" id="user-avatar">?</div>
     <div class="user-nm" id="user-name">Signed in</div>
     <div class="sync-dot" id="sync-dot" title="Synced"></div>
+    <button class="signout-btn" onclick="location.reload()" title="Refresh app">↺</button>
     <button class="signout-btn" onclick="window._fbSignOut()">Sign out</button>
   </div>
 </div>
@@ -864,6 +872,7 @@ details>summary::marker{display:none;}
 </div>
 
 <div class="nav">
+  <button class="nt" onclick="sv('fitness')">Fitness</button>
   <button class="nt a" onclick="sv('tasks')">Tasks</button>
   <button class="nt" onclick="sv('today')">Today</button>
   <button class="nt" onclick="sv('kanban')">Board</button>
@@ -872,7 +881,6 @@ details>summary::marker{display:none;}
   <button class="nt" onclick="sv('calendar')">Calendar</button>
   <button class="nt" onclick="sv('dashboard')">Dashboard</button>
   <button class="nt" onclick="sv('archive')">Archive</button>
-  <button class="nt" onclick="sv('fitness')">Fitness</button>
   <button class="nt" id="nt-search" style="display:none;" onclick="sv('search')">Search</button>
 </div>
 
@@ -7358,10 +7366,14 @@ function save(){
   if(window._fbSave){
     const dot=document.getElementById('sync-dot');
     if(dot)dot.className='sync-dot saving';
+    const state=getState();
+    const sizeKB=Math.round(JSON.stringify(state).length/1024);
+    const dot=document.getElementById('sync-dot');
+    if(dot)dot.title='Last save: '+sizeKB+'KB';
     window._fbSave(
-      getState(),
-      ()=>{const d=document.getElementById('sync-dot');if(d)d.className='sync-dot';},
-      ()=>{const d=document.getElementById('sync-dot');if(d)d.className='sync-dot err';showToast('⚠️ Sync failed — check your connection.');}
+      state,
+      ()=>{const d=document.getElementById('sync-dot');if(d){d.className='sync-dot';d.title='Synced ('+sizeKB+'KB)';}},
+      (e)=>{const d=document.getElementById('sync-dot');if(d)d.className='sync-dot err';showToast('⚠️ Sync failed: '+(e&&e.message?e.message:e&&e.code?e.code:'unknown error'));}
     );
   }
 }
