@@ -5889,6 +5889,7 @@ function svgLine(vals,color,unit){
 
 function svgBars(vals,color){
   if(!vals.length)return'';
+  if(vals.length<2)return'<div style="font-size:11px;color:var(--text-faint);padding:8px 0;">Log at least 2 sessions to see chart.</div>';
   const W=300,H=70,PAD=4,maxV=Math.max(...vals)||1;
   const slotW=(W-PAD*2)/vals.length;
   const bw=Math.max(2,slotW-2);
@@ -7013,7 +7014,12 @@ function rFitTargets(){
       </div>
     </div>`;
   }).join('');
-  const exRows=fitExercises.filter(ex=>(ex.gw||ex.goalWeight||ex.gr||ex.goalReps)).filter(ex=>!ex.muscles||ex.muscles[0]!=='Cardio').map(ex=>{
+  const _lastLogged={};
+  fitSessions.forEach(s=>{
+    if(s.type!=='lifting'||!s.date)return;
+    (s.items||[]).forEach(item=>{const id=item.exId||item.id;if(!_lastLogged[id]||s.date>_lastLogged[id])_lastLogged[id]=s.date;});
+  });
+  const exRows=fitExercises.filter(ex=>(ex.gw||ex.goalWeight||ex.gr||ex.goalReps)).filter(ex=>!ex.muscles||ex.muscles[0]!=='Cardio').sort((a,b)=>{const da=_lastLogged[a.id]||'';const db=_lastLogged[b.id]||'';return db>da?1:db<da?-1:0;}).map(ex=>{
     const isBW=(ex.unit||'lbs')==='bw'||(ex.unit||'lbs')==='sec';const isSec=(ex.unit||'lbs')==='sec';
     const isDB=/dumbbell/i.test(ex.name);
     const current=isBW?(ex.targetReps||ex.sr||0):(ex.targetWeight||ex.sw||0);
