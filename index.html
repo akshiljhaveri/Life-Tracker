@@ -3209,49 +3209,35 @@ function rDash(){
 // ─────────────────────────── MUSCLE SKELETON ─────────────────────────────────
 // Overlay regions as % of image (1206×1198 source image, front left / back right)
 const SKEL_REGIONS=[
-  // ── FRONT (figure ≈ x5–40%, image 1206×1198) ─────────────────────────
-  // Chest: pec belly sits below clavicle (y≈16), inward of shoulder cap
-  {grp:'Chest',    m:'Chest',      lbl:'Chest (L)',       x:14,  y:16,  w:7,   h:8,   rx:'45%'},
-  {grp:'Chest',    m:'Chest',      lbl:'Chest (R)',       x:22,  y:16,  w:7,   h:8,   rx:'45%'},
-  // Delts: arm outer edge ≈x8%, inner ≈x13% — delts sit on that column y≈15–22%
-  {grp:'Shoulders',m:'Front Delt', lbl:'Front Delt (L)',  x:9,   y:15,  w:4,   h:7,   rx:'50%'},
-  {grp:'Shoulders',m:'Front Delt', lbl:'Front Delt (R)',  x:34,  y:15,  w:4,   h:7,   rx:'50%'},
-  {grp:'Shoulders',m:'Side Delt',  lbl:'Side Delt (L)',   x:7,   y:15,  w:3.5, h:7,   rx:'50%'},
-  {grp:'Shoulders',m:'Side Delt',  lbl:'Side Delt (R)',   x:37,  y:15,  w:3.5, h:7,   rx:'50%'},
-  // Biceps: upper arm column y≈22–33%, arm center ≈x11% (L) and x37% (R)
-  {grp:'Biceps',   m:'Biceps',     lbl:'Biceps (L)',      x:8,   y:22,  w:5,   h:11,  rx:'50%'},
-  {grp:'Biceps',   m:'Biceps',     lbl:'Biceps (R)',      x:34,  y:22,  w:5,   h:11,  rx:'50%'},
-  // Forearms: lower arm y≈33–43%, slightly narrower than bicep
-  {grp:'Forearms', m:'Forearms',   lbl:'Forearm (L)',     x:7.5, y:33,  w:5,   h:10,  rx:'50%'},
-  {grp:'Forearms', m:'Forearms',   lbl:'Forearm (R)',     x:35,  y:33,  w:5,   h:10,  rx:'50%'},
-  // Abs: central torso below pecs (y≈24–38%)
-  {grp:'Abs',      m:'Abs',        lbl:'Abs',             x:17,  y:24,  w:13,  h:14,  rx:'12px'},
-  // Quads: front thigh y≈46–62%
-  {grp:'Legs',     m:'Quads',      lbl:'Quad (L)',        x:12,  y:46,  w:10,  h:16,  rx:'50%'},
-  {grp:'Legs',     m:'Quads',      lbl:'Quad (R)',        x:26,  y:46,  w:10,  h:16,  rx:'50%'},
-  // Front calves: gastrocnemius belly y≈62–74% (1% gap below knee at y≈62%)
-  {grp:'Calves',   m:'Calves',     lbl:'Calf (L)',        x:13,  y:62,  w:7,   h:12,  rx:'50%'},
-  {grp:'Calves',   m:'Calves',     lbl:'Calf (R)',        x:27,  y:62,  w:7,   h:12,  rx:'50%'},
-  // ── BACK (figure ≈ x54–95%, image 1206×1198) ─────────────────────────
-  // Traps: upper back between rear delt caps (x63–85%), does not bleed into arms
-  {grp:'Back',     m:'Traps',      lbl:'Traps',           x:63,  y:13,  w:22,  h:12,  rx:'50%'},
-  // Rear delts: posterior shoulder cap — left arm outer ≈x55%, right ≈x86%
-  {grp:'Shoulders',m:'Rear Delt',  lbl:'Rear Delt (L)',   x:55,  y:13,  w:7,   h:8,   rx:'50%'},
-  {grp:'Shoulders',m:'Rear Delt',  lbl:'Rear Delt (R)',   x:86,  y:13,  w:7,   h:8,   rx:'50%'},
-  // Lats: mid-back L/R ellipses, start below rear delt (y≈24), inside tricep columns
-  {grp:'Back',     m:'Lats',       lbl:'Lat (L)',         x:60,  y:24,  w:11,  h:17,  rx:'35%'},
-  {grp:'Back',     m:'Lats',       lbl:'Lat (R)',         x:77,  y:24,  w:10,  h:17,  rx:'35%'},
-  // Triceps: back of upper arm — back figure arms at x54–60% (L) and x87–93% (R)
-  {grp:'Triceps',  m:'Triceps',    lbl:'Triceps (L)',     x:54,  y:21,  w:6,   h:13,  rx:'50%'},
-  {grp:'Triceps',  m:'Triceps',    lbl:'Triceps (R)',     x:87,  y:21,  w:6,   h:13,  rx:'50%'},
-  // Glutes: full posterior hip width y≈44–56%
-  {grp:'Legs',     m:'Glutes',     lbl:'Glutes',          x:63,  y:44,  w:22,  h:12,  rx:'50%'},
-  // Hamstrings: back of thigh y≈57–67% (ends at y67 where calves begin)
-  {grp:'Legs',     m:'Hamstrings', lbl:'Hamstring (L)',   x:62,  y:57,  w:10,  h:10,  rx:'50%'},
-  {grp:'Legs',     m:'Hamstrings', lbl:'Hamstring (R)',   x:76,  y:57,  w:10,  h:10,  rx:'50%'},
-  // Back calves: y≈67–79%, starts where hamstrings end
-  {grp:'Calves',   m:'Calves',     lbl:'Calf (L)',        x:63,  y:67,  w:8.5, h:12,  rx:'50%'},
-  {grp:'Calves',   m:'Calves',     lbl:'Calf (R)',        x:77,  y:67,  w:8.5, h:12,  rx:'50%'},
+  // ── FRONT — coordinates calibrated live in DevTools 2026-06-18 ────────
+  {grp:'Chest',    m:'Chest',      lbl:'Chest (L)',       x:18,   y:20,  w:7,   h:8,   rx:'45%'},
+  {grp:'Chest',    m:'Chest',      lbl:'Chest (R)',       x:26,   y:20,  w:7,   h:8,   rx:'45%'},
+  {grp:'Shoulders',m:'Front Delt', lbl:'Front Delt (L)',  x:14,   y:20,  w:4,   h:7,   rx:'50%'},
+  {grp:'Shoulders',m:'Front Delt', lbl:'Front Delt (R)',  x:33,   y:20,  w:4,   h:7,   rx:'50%'},
+  {grp:'Shoulders',m:'Side Delt',  lbl:'Side Delt (L)',   x:13,   y:20,  w:3,   h:7,   rx:'50%'},
+  {grp:'Shoulders',m:'Side Delt',  lbl:'Side Delt (R)',   x:35,   y:20,  w:3,   h:7,   rx:'50%'},
+  {grp:'Biceps',   m:'Biceps',     lbl:'Biceps (L)',      x:12,   y:26,  w:5,   h:11,  rx:'50%'},
+  {grp:'Biceps',   m:'Biceps',     lbl:'Biceps (R)',      x:33.5, y:26,  w:5,   h:11,  rx:'50%'},
+  {grp:'Forearms', m:'Forearms',   lbl:'Forearm (L)',     x:10,   y:35,  w:5,   h:10,  rx:'50%'},
+  {grp:'Forearms', m:'Forearms',   lbl:'Forearm (R)',     x:36,   y:35,  w:5,   h:10,  rx:'50%'},
+  {grp:'Abs',      m:'Abs',        lbl:'Abs',             x:18,   y:29,  w:15,  h:15,  rx:'12px'},
+  {grp:'Legs',     m:'Quads',      lbl:'Quad (L)',        x:16,   y:49,  w:9,   h:16,  rx:'50%'},
+  {grp:'Legs',     m:'Quads',      lbl:'Quad (R)',        x:25.5, y:49,  w:9,   h:16,  rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (L)',        x:18,   y:72,  w:7,   h:12,  rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (R)',        x:25,   y:72,  w:7,   h:12,  rx:'50%'},
+  // ── BACK — coordinates calibrated live in DevTools 2026-06-18 ────────
+  {grp:'Back',     m:'Traps',      lbl:'Traps',           x:67,   y:19,  w:18,  h:8,   rx:'50%'},
+  {grp:'Shoulders',m:'Rear Delt',  lbl:'Rear Delt (L)',   x:63,   y:20,  w:5,   h:6,   rx:'50%'},
+  {grp:'Shoulders',m:'Rear Delt',  lbl:'Rear Delt (R)',   x:84.5, y:20,  w:5,   h:6,   rx:'50%'},
+  {grp:'Back',     m:'Lats',       lbl:'Lat (L)',         x:68,   y:25,  w:8,   h:12,  rx:'35%'},
+  {grp:'Back',     m:'Lats',       lbl:'Lat (R)',         x:77,   y:25,  w:8,   h:12,  rx:'35%'},
+  {grp:'Triceps',  m:'Triceps',    lbl:'Triceps (L)',     x:62,   y:26,  w:6,   h:11,  rx:'50%'},
+  {grp:'Triceps',  m:'Triceps',    lbl:'Triceps (R)',     x:84.5, y:26,  w:6,   h:11,  rx:'50%'},
+  {grp:'Legs',     m:'Glutes',     lbl:'Glutes',          x:68,   y:43,  w:17,  h:10,  rx:'50%'},
+  {grp:'Legs',     m:'Hamstrings', lbl:'Hamstring (L)',   x:67,   y:52,  w:9,   h:15,  rx:'50%'},
+  {grp:'Legs',     m:'Hamstrings', lbl:'Hamstring (R)',   x:77,   y:52,  w:9,   h:15,  rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (L)',        x:70,   y:69,  w:6,   h:12,  rx:'50%'},
+  {grp:'Calves',   m:'Calves',     lbl:'Calf (R)',        x:77,   y:69,  w:6,   h:12,  rx:'50%'},
 ];
 
 function skelOpacity(sets){
