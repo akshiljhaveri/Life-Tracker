@@ -1412,7 +1412,8 @@ details>summary::marker{display:none;}
       <div id="fit-replace-title" style="font-weight:600;font-size:15px;">Replace Exercise</div>
       <button onclick="closeM('fit-replace-modal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">×</button>
     </div>
-    <div id="fit-replace-body" style="max-height:60vh;overflow-y:auto;"></div>
+    <input id="fit-replace-search" type="search" placeholder="Search exercises or muscles…" oninput="fitRenderReplacements(this.value)" style="width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid var(--border-md);background:var(--surface);font-size:13px;margin-bottom:10px;">
+    <div id="fit-replace-body" style="max-height:55vh;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -5121,23 +5122,46 @@ function fitReplaceExercise(dayName, groupId, exId){
       <button onclick="fitConfirmReplace('${dn}','${gi}','${ei}','${ni}')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-left:8px;">Select</button>
     </div>`;
   }
-  let body='';
-  if(best.length){
-    body+=`<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Best matches — same muscles</div>`;
-    body+=best.slice(0,15).map(exCard).join('');
-  }
-  if(other.length){
-    const catName=getGroupCategoryName(groupId);
-    body+=`<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin:${best.length?'12px':'0'} 0 6px;">Other ${esc(catName)} exercises</div>`;
-    body+=other.slice(0,15).map(exCard).join('');
-  }
-  if(!body)body='<div style="font-size:13px;color:var(--text-faint);padding:12px 0;">No alternatives found.</div>';
+  _fitReplaceCtx={dayName,groupId,exId,scored,exCard};
   const titleEl=document.getElementById('fit-replace-title');
-  const bodyEl=document.getElementById('fit-replace-body');
   if(titleEl)titleEl.textContent=`Replace: ${ex.name}`;
-  if(bodyEl)bodyEl.innerHTML=body;
-  _fitReplaceCtx={dayName,groupId,exId};
+  const searchEl=document.getElementById('fit-replace-search');
+  if(searchEl)searchEl.value='';
+  fitRenderReplacements('');
   openM('fit-replace-modal');
+  setTimeout(()=>document.getElementById('fit-replace-search')?.focus(),120);
+}
+
+function fitRenderReplacements(q){
+  if(!_fitReplaceCtx)return;
+  const{scored,exCard}=_fitReplaceCtx;
+  const bodyEl=document.getElementById('fit-replace-body');if(!bodyEl)return;
+  const query=(q||'').toLowerCase().trim();
+  let body='';
+  if(query){
+    const matches=scored.filter(x=>{
+      const e=x.ex;
+      return e.name.toLowerCase().includes(query)||(e.muscles||[]).some(m=>m.toLowerCase().includes(query));
+    });
+    if(matches.length){
+      body=matches.slice(0,20).map(exCard).join('');
+    }else{
+      body='<div style="font-size:13px;color:var(--text-faint);padding:12px 0;">No exercises match your search.</div>';
+    }
+  }else{
+    const best=scored.filter(x=>x.score>0);
+    const other=scored.filter(x=>x.score===0);
+    if(best.length){
+      body+=`<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Best matches — same muscles</div>`;
+      body+=best.slice(0,15).map(exCard).join('');
+    }
+    if(other.length){
+      body+=`<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin:${best.length?'12px':'0'} 0 6px;">Other exercises</div>`;
+      body+=other.slice(0,15).map(exCard).join('');
+    }
+    if(!body)body='<div style="font-size:13px;color:var(--text-faint);padding:12px 0;">No alternatives found.</div>';
+  }
+  bodyEl.innerHTML=body;
 }
 
 function fitConfirmReplace(dayName, groupId, oldId, newId){
