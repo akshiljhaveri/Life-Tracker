@@ -695,10 +695,12 @@ body.dark{
 .fit-progress-fill{height:100%;background:#F5F3EE;border-radius:3px;transition:width .3s ease;}
 .fit-session-title{font-family:'Fraunces',serif;font-size:20px;font-weight:400;flex:1;}
 .fit-group-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);font-weight:600;margin:14px 0 6px;padding:0 2px;}
-.fit-ex-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden;}
+.fit-ex-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden;transition:opacity .15s;}
+.fit-ex-card.fit-drag-over{border-top:3px solid var(--accent);margin-top:-2px;}
 .fit-ex-card-head{display:flex;align-items:center;gap:10px;padding:13px 14px;}
 .fit-ex-card-name{font-size:15px;font-weight:500;flex:1;}
 .fit-ex-card-count{font-size:12px;color:var(--text-faint);}
+.fit-ex-card-grip{cursor:grab;padding:4px 2px;color:var(--text-faint);font-size:18px;line-height:1;touch-action:none;user-select:none;-webkit-user-select:none;}
 .fit-log-btn{padding:9px 18px;border-radius:var(--rs);background:var(--accent);color:#F5F3EE;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .fit-log-btn:active{opacity:.8;}
 .fit-sets-table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -4387,6 +4389,7 @@ function rFitSessionCards(){
         const setsRows=sets.map((s,i)=>`<tr><td>${i+1}</td><td>${isSecItem?'BW':fitFmtWeight(s.weightKg,s.unit)}</td><td>${s.reps} ${isSecItem?'sec':'reps'}</td><td><button class="fit-set-del" onclick="fitDelSet('${item.id}',${i})">×</button></td></tr>`).join('');
         cardsHTML+=`<div class="fit-ex-card">
           <div class="fit-ex-card-head">
+            <div class="fit-ex-card-grip" onpointerdown="fitGripDown(event,'${item.id}')">⠿</div>
             <div class="fit-ex-card-name">${esc(item.name)}</div>
             <div class="fit-ex-card-count">${sets.length} set${sets.length!==1?'s':''}</div>
             <button class="fit-log-btn" onclick="fitOpenSetSheet('${item.id}')">+ Set</button>
@@ -4631,6 +4634,63 @@ function fitCancelWorkout(){
   document.getElementById('fit-set-sheet').style.display='none';
   save();rFitToday();
 }
+
+// ── EXERCISE DRAG-AND-DROP REORDER ───────────────────────────────────────────
+let _fitDrag={id:null,srcIdx:-1,dropIdx:-1,clone:null,srcCard:null,grip:null};
+function fitGripDown(event,itemId){
+  event.preventDefault();event.stopPropagation();
+  if(!fitActiveSession)return;
+  const grip=event.currentTarget;
+  const card=grip.closest('.fit-ex-card');if(!card)return;
+  const cards=[...document.querySelectorAll('.fit-ex-card')];
+  _fitDrag.srcIdx=cards.indexOf(card);
+  if(_fitDrag.srcIdx<0)return;
+  _fitDrag.id=itemId;_fitDrag.dropIdx=_fitDrag.srcIdx;_fitDrag.srcCard=card;_fitDrag.grip=grip;
+  const rect=card.getBoundingClientRect();
+  _fitDrag.clone=card.cloneNode(true);
+  Object.assign(_fitDrag.clone.style,{
+    position:'fixed',width:rect.width+'px',left:rect.left+'px',top:rect.top+'px',
+    opacity:'0.88',pointerEvents:'none',zIndex:'9999',
+    boxShadow:'0 8px 24px rgba(0,0,0,.28)',borderRadius:'var(--r)',margin:'0',transition:'none'
+  });
+  document.body.appendChild(_fitDrag.clone);
+  card.style.opacity='0.2';
+  grip.setPointerCapture(event.pointerId);
+  grip.addEventListener('pointermove',fitGripMove,{passive:false});
+  grip.addEventListener('pointerup',fitGripUp);
+  grip.addEventListener('pointercancel',fitGripUp);
+}
+function fitGripMove(event){
+  if(!_fitDrag.clone)return;
+  event.preventDefault();
+  const y=event.clientY;
+  _fitDrag.clone.style.top=(y-30)+'px';
+  const cards=[...document.querySelectorAll('.fit-ex-card')];
+  let drop=cards.length-1;
+  for(let i=0;i<cards.length;i++){
+    const r=cards[i].getBoundingClientRect();
+    if(y<r.top+r.height/2){drop=i;break;}
+  }
+  if(drop!==_fitDrag.dropIdx){
+    _fitDrag.dropIdx=drop;
+    cards.forEach((c,i)=>c.classList.toggle('fit-drag-over',i===drop&&i!==_fitDrag.srcIdx));
+  }
+}
+function fitGripUp(event){
+  const grip=_fitDrag.grip;
+  if(grip){grip.removeEventListener('pointermove',fitGripMove);grip.removeEventListener('pointerup',fitGripUp);grip.removeEventListener('pointercancel',fitGripUp);}
+  if(_fitDrag.clone){_fitDrag.clone.remove();_fitDrag.clone=null;}
+  document.querySelectorAll('.fit-ex-card').forEach(c=>{c.style.opacity='';c.classList.remove('fit-drag-over');});
+  const src=_fitDrag.srcIdx,dst=_fitDrag.dropIdx;
+  _fitDrag={id:null,srcIdx:-1,dropIdx:-1,clone:null,srcCard:null,grip:null};
+  if(dst>=0&&dst!==src&&fitActiveSession){
+    const items=fitActiveSession.items;
+    const [moved]=items.splice(src,1);
+    items.splice(dst,0,moved);
+    save();rFitSessionCards();
+  }
+}
+
 function fitOpenFeedback(sessionId,label){
   fitFeedbackSessionId=sessionId;
   fitFeedbackEffortVal=null;
