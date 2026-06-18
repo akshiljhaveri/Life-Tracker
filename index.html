@@ -2035,6 +2035,7 @@ let fitSchedule={};
 let fitSessions=[];
 let fitActiveSession=null;
 let fitCurrentExId=null;   // exercise id whose set sheet is open
+let fitCurrentIsDB=false;  // true when the open exercise is a dumbbell exercise
 let fitTab='dash';         // 'dash'|'today'|'running'|'schedule'|'groups'|'exercises'|'history'
 let fitScheduleView='week'; // 'week'|'calendar'
 let fitHistoryView='list';  // 'list'|'calendar'
@@ -4412,7 +4413,7 @@ function fitSetSheetUnit(u){
   document.getElementById('fit-sheet-kg-btn').style.color=u==='kg'?'#F5F3EE':'var(--text-muted)';
   document.getElementById('fit-sheet-lbs-btn').style.background=u==='lbs'?'var(--accent)':'var(--surface2)';
   document.getElementById('fit-sheet-lbs-btn').style.color=u==='lbs'?'#F5F3EE':'var(--text-muted)';
-  document.getElementById('fit-weight-label').textContent='Weight ('+u+')';
+  document.getElementById('fit-weight-label').textContent='Weight ('+u+')'+(fitCurrentIsDB?' · per DB':'');
   fitUpdateWeightConv();
 }
 
@@ -4436,6 +4437,7 @@ function fitOpenSetSheet(itemId){
   if(!fitActiveSession)return;
   fitCurrentExId=itemId;
   const item=fitActiveSession.items.find(x=>x.id===itemId);if(!item)return;
+  fitCurrentIsDB=/dumbbell/i.test(item.name);
   document.getElementById('fit-sheet-exname').textContent=item.name;
   // Show progressive overload target
   const tgt=fitGetTarget(item.exId);
@@ -4445,7 +4447,7 @@ function fitOpenSetSheet(itemId){
     const isAtMax=tgt.reps>=rr.max;
     tgtEl.className='fit-target-badge'+(isAtMax?' fit-target-up':'');
     tgtEl.style.display='inline-flex';
-    tgtEl.textContent=(isAtMax?'⬆ Push for: ':'🎯 Target: ')+tgt.weight+tgt.unit+' × '+tgt.reps+' reps';
+    tgtEl.textContent=(isAtMax?'⬆ Push for: ':'🎯 Target: ')+tgt.weight+tgt.unit+(fitCurrentIsDB?' / DB':'')+' × '+tgt.reps+' reps';
   } else if(tgtEl){tgtEl.style.display='none';}
   // Use last set from current session first, then fall back to last session
   const currentLast=item.sets.length?item.sets[item.sets.length-1]:null;
@@ -6750,11 +6752,13 @@ function rFitTargets(){
   }).join('');
   const exRows=fitExercises.filter(ex=>(ex.gw||ex.goalWeight||ex.gr||ex.goalReps)).filter(ex=>!ex.muscles||ex.muscles[0]!=='Cardio').map(ex=>{
     const isBW=(ex.unit||'lbs')==='bw';
+    const isDB=/dumbbell/i.test(ex.name);
     const current=isBW?(ex.targetReps||ex.sr||0):(ex.targetWeight||ex.sw||0);
     const goal=isBW?(ex.goalReps||ex.gr||0):(ex.goalWeight||ex.gw||0);
     if(!goal)return'';
     const pct=Math.min(100,Math.round(current/goal*100));
     const color=pct>=80?'#219150':pct>=50?'#e67e22':'#c0392b';
+    const perDB=(!isBW&&isDB)?'<span style="font-size:9px;color:var(--text-faint);margin-left:3px;">per DB</span>':'';
     return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div>
@@ -6762,7 +6766,7 @@ function rFitTargets(){
           <div style="font-size:10px;color:var(--text-faint);">${(ex.muscles||[]).slice(0,3).join(' · ')}</div>
         </div>
         <div style="text-align:right;font-size:12px;">
-          <div style="color:${color};font-weight:500;">${isBW?current+' reps':current+' lbs'} → ${isBW?goal+' reps':goal+' lbs'}</div>
+          <div style="color:${color};font-weight:500;">${isBW?current+' reps':current+' lbs'} → ${isBW?goal+' reps':goal+' lbs'}${perDB}</div>
           <div style="color:var(--text-faint);">${pct}%</div>
         </div>
       </div>
