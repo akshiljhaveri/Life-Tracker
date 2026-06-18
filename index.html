@@ -4369,6 +4369,7 @@ function rFitSessionCards(){
       <button class="fit-ghost-btn" onclick="fitEditActiveSession()" style="font-size:12px;">✏️ Edit</button>
       <button class="fit-ghost-btn" onclick="fitSessionAddGroup()">+ Group</button>
       <button class="fit-ghost-btn" onclick="fitSessionAddExercise()">+ Exercise</button>
+      <button class="fit-ghost-btn" onclick="fitCancelWorkout()" style="color:var(--danger,#e05);">✕ Cancel</button>
       <button class="fit-pill-btn" onclick="fitPromptFinish()" style="margin-left:auto;">Finish</button>
     </div>
     ${cardsHTML}`;
@@ -4541,13 +4542,22 @@ function fitPromptFinish(){
 function fitFinishWorkout(){
   if(!fitActiveSession)return;
   const sessionDate=fitActiveSession.date||_ldStr(new Date(fitActiveSession.startTime));
-  const completedSession={...fitActiveSession,endTime:Date.now(),date:sessionDate,type:'lifting'};
+  const loggedItems=fitActiveSession.items.filter(i=>i.sets&&i.sets.length>0);
+  const completedSession={...fitActiveSession,endTime:Date.now(),date:sessionDate,type:'lifting',items:loggedItems};
   fitSessions.push(completedSession);
   fitApplyProgressiveOverload(completedSession);
   if(fitSessionTimer)clearInterval(fitSessionTimer);
   fitActiveSession=null;fitCurrentExId=null;
   closeM('fit-finish-modal');save();
   fitOpenFeedback(completedSession.id,completedSession.name||'Workout');
+}
+function fitCancelWorkout(){
+  if(!fitActiveSession)return;
+  if(!confirm('Cancel this workout? Nothing will be saved.'))return;
+  if(fitSessionTimer)clearInterval(fitSessionTimer);
+  fitActiveSession=null;fitCurrentExId=null;
+  document.getElementById('fit-set-sheet').style.display='none';
+  save();rFitToday();
 }
 function fitOpenFeedback(sessionId,label){
   fitFeedbackSessionId=sessionId;
