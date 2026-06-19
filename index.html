@@ -7204,6 +7204,36 @@ function fitOpenCardioModalFromPlan(){
     if(nameInp)nameInp.value=`W${s.w} S${s.s} — ${s.wLabel}`;
   },50);
 }
+function fitCalcPBs(){
+  const targets=[1,1.5,2,2.5,3,3.5,4,4.5,5];
+  const pbs={};targets.forEach(d=>pbs[d]=null);
+  fitSessions.filter(s=>s.type==='cardio'&&Array.isArray(s.intervals)&&s.intervals.length).forEach(session=>{
+    const ivs=session.intervals;
+    targets.forEach(targetKm=>{
+      // Check every interval as a potential start point
+      for(let si=0;si<ivs.length;si++){
+        let dist=0,time=0;
+        for(let i=si;i<ivs.length;i++){
+          const iv=ivs[i];
+          const spd=iv.speedKmh;const dur=iv.durationSec;
+          if(!spd||!dur)continue;
+          const ivDist=spd*dur/3600;
+          const need=targetKm-dist;
+          if(need<=ivDist){
+            time+=(need/spd)*3600;
+            if(!pbs[targetKm]||time<pbs[targetKm].timeSec)pbs[targetKm]={timeSec:time,name:session.name,date:session.date};
+            break;
+          }
+          dist+=ivDist;time+=dur;
+        }
+      }
+    });
+  });
+  return pbs;
+}
+function _fmtPbTime(secs){const m=Math.floor(secs/60);const s=Math.round(secs%60);return m+':'+(s<10?'0':'')+s;}
+function _fmtPbPace(secs,km){const ps=secs/km;const m=Math.floor(ps/60);const s=Math.round(ps%60);return m+':'+(s<10?'0':'')+s+'/km';}
+function _fmtPbDate(d){if(!d)return'';const dt=new Date(d+'T12:00:00');return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]+' '+dt.getDate();}
 function rFitRunning(){
   const el=document.getElementById('fit-running-panel');if(!el)return;
   const cardioSessions=fitSessions.filter(s=>s.type==='cardio');
@@ -7254,6 +7284,15 @@ function rFitRunning(){
       <div style="flex:1;"><div style="font-size:13px;font-weight:${done?600:400};">${m.label}</div><div style="font-size:11px;color:var(--text-faint);">${m.desc}</div></div>
       ${done?'<div style="font-size:11px;color:#219150;font-weight:600;">✓</div>':''}
     </div>`;
+  }).join('');
+  const pbData=fitCalcPBs();
+  const pbRows=[1,1.5,2,2.5,3,3.5,4,4.5,5].map(d=>{
+    const pb=pbData[d];
+    if(!pb)return`<div style="font-size:13px;color:var(--text-faint);">${d} km</div><div style="color:var(--text-faint);font-size:13px;">—</div><div></div><div></div>`;
+    return`<div style="font-size:13px;font-weight:600;">${d} km</div>
+      <div style="font-size:14px;font-weight:700;color:var(--accent);font-family:'Fraunces',serif;">${_fmtPbTime(pb.timeSec)}</div>
+      <div style="font-size:12px;color:var(--text-muted);">${_fmtPbPace(pb.timeSec,d)}</div>
+      <div style="font-size:11px;color:var(--text-faint);">${_fmtPbDate(pb.date)}</div>`;
   }).join('');
   const histHTML=cardioSessions.slice().reverse().slice(0,5).map(s=>{
     let km=0;(s.intervals||[]).filter(iv=>iv.type==='run').forEach(iv=>km+=(iv.distanceKm||0));
@@ -7318,6 +7357,17 @@ function rFitRunning(){
       ${chartBars||`<div style="font-size:11px;color:var(--text-faint);margin:auto;align-self:center;">Log runs to see trend</div>`}
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:2px;font-size:10px;color:var(--text-faint);"><span>Start</span><span>Most recent →</span></div>
+  </div>
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:10px;font-weight:500;">Personal Bests</div>
+    <div style="display:grid;grid-template-columns:52px 1fr auto 42px;gap:6px 10px;align-items:center;">
+      <div style="font-size:10px;color:var(--text-faint);font-weight:500;letter-spacing:.04em;">DIST</div>
+      <div style="font-size:10px;color:var(--text-faint);font-weight:500;letter-spacing:.04em;">TIME</div>
+      <div style="font-size:10px;color:var(--text-faint);font-weight:500;letter-spacing:.04em;">PACE</div>
+      <div style="font-size:10px;color:var(--text-faint);font-weight:500;letter-spacing:.04em;">DATE</div>
+      ${pbRows}
+    </div>
+    ${Object.values(pbData).every(v=>!v)?`<div style="font-size:12px;color:var(--text-faint);text-align:center;padding:8px 0;">Log runs to see your personal bests</div>`:''}
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem;">
     <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:12px 14px;"><div style="font-size:20px;font-weight:700;font-family:'Fraunces',serif;">${totalKm.toFixed(1)}<span style="font-size:12px;font-weight:400;"> km</span></div><div style="font-size:11px;color:var(--text-faint);">Total distance</div></div>
