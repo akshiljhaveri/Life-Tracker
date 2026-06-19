@@ -5089,7 +5089,7 @@ function fitScheduleFromModalOpt(dateStr,idx){
   const rec=window._fitModalOpts&&window._fitModalOpts[idx];
   if(!rec)return;
   fitScheduleDayByDate(dateStr,rec);
-  closeM('fit-edit-day-modal');
+  fitEditScheduleDay(dateStr);
 }
 
 function fitEditScheduleDay(dateStr){
@@ -5199,7 +5199,7 @@ function fitEditScheduleDay(dateStr){
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em;">Recommended</div>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:10px;">
       <span style="font-size:13px;font-weight:500;">${recLabel}</span>
-      <button onclick="fitScheduleDayByDate('${dateStr}',(window._fitWeekRecs&&window._fitWeekRecs['${dateStr}'])||fitGetRecommendation('${dateStr}'));closeM('fit-edit-day-modal')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-left:8px;">Use this</button>
+      <button onclick="fitScheduleDayByDate('${dateStr}',(window._fitWeekRecs&&window._fitWeekRecs['${dateStr}'])||fitGetRecommendation('${dateStr}'));fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:4px 10px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-left:8px;">Add</button>
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em;">Other options</div>
     ${optRows}`;
