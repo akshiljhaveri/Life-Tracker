@@ -1397,31 +1397,52 @@ details>summary::marker{display:none;}
 
 <!-- INTERACTIVE RUN VIEW -->
 <div id="fit-run-view" style="display:none;position:fixed;inset:0;z-index:3000;background:var(--surface);overflow:hidden;display:none;flex-direction:column;">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border-md);">
+  <!-- Always-visible header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border-md);flex-shrink:0;">
     <div>
       <div id="frv-session-label" style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;"></div>
       <div id="frv-session-name" style="font-size:17px;font-family:'Fraunces',serif;font-weight:400;"></div>
     </div>
-    <div style="text-align:right;">
-      <div style="font-size:10px;color:var(--text-faint);">Elapsed</div>
-      <div id="frv-elapsed" style="font-size:14px;font-weight:600;color:var(--text-muted);">0:00</div>
+    <div style="display:flex;gap:16px;align-items:flex-end;">
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--text-faint);">Elapsed</div>
+        <div id="frv-elapsed" style="font-size:14px;font-weight:600;color:var(--text-muted);">0:00</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--text-faint);">Distance</div>
+        <div id="frv-dist" style="font-size:14px;font-weight:600;color:var(--accent);">0.00 km</div>
+      </div>
     </div>
   </div>
-  <div style="text-align:center;padding:16px 20px 10px;">
-    <div id="frv-interval-type" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px;"></div>
-    <div id="frv-countdown" style="font-size:80px;font-weight:700;font-family:'Fraunces',serif;line-height:1;margin-bottom:8px;"></div>
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-      <div id="frv-speed" style="font-size:16px;font-weight:500;color:var(--text-muted);"></div>
-      <button onclick="_fitRunToggleUnit()" id="frv-unit-btn" style="font-size:11px;color:var(--text-faint);background:var(--surface2);border:1px solid var(--border-md);border-radius:20px;padding:3px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;">km/h ↔ mph</button>
+
+  <!-- Active running screen -->
+  <div id="frv-active" style="display:flex;flex:1;flex-direction:column;min-height:0;">
+    <div style="text-align:center;padding:14px 20px 8px;flex-shrink:0;">
+      <div id="frv-interval-type" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin-bottom:6px;"></div>
+      <div id="frv-countdown" style="font-size:80px;font-weight:700;font-family:'Fraunces',serif;line-height:1;margin-bottom:6px;"></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <div id="frv-speed" style="font-size:16px;font-weight:500;color:var(--text-muted);"></div>
+        <button onclick="_fitRunToggleUnit()" id="frv-unit-btn" style="font-size:11px;color:var(--text-faint);background:var(--surface2);border:1px solid var(--border-md);border-radius:20px;padding:3px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;">km/h ↔ mph</button>
+      </div>
+      <div id="frv-next-wrap" style="margin:10px 0 0;padding:12px 16px;background:var(--surface2);border-radius:14px;font-size:15px;text-align:left;"></div>
     </div>
-    <div id="frv-next-wrap" style="margin:12px 0 0;padding:14px 18px;background:var(--surface2);border-radius:14px;font-size:15px;text-align:left;"></div>
+    <div style="margin:8px 16px 4px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0;">All intervals</div>
+    <div id="frv-intervals" style="margin:0 16px;flex:1;overflow-y:auto;border-radius:10px;border:1px solid var(--border-md);padding:4px;min-height:0;"></div>
+    <div style="padding:10px 16px 36px;display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="_fitRunCancel()" style="flex:1;padding:12px 6px;background:none;color:var(--danger,#e05);border:1px solid rgba(220,50,50,.35);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✕ Cancel</button>
+      <button id="frv-pause-btn" onclick="_fitRunTogglePause()" style="flex:1;padding:12px 6px;background:var(--surface2);color:var(--text);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">⏸ Pause</button>
+      <button onclick="_fitRunSkip()" style="flex:1;padding:12px 6px;background:var(--surface2);color:var(--text-muted);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">Skip →</button>
+      <button onclick="_fitRunFinish()" style="flex:2;padding:12px;background:var(--accent);color:#F5F3EE;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✓ Finish</button>
+    </div>
   </div>
-  <div style="margin:10px 16px 5px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;">All intervals</div>
-  <div id="frv-intervals" style="margin:0 16px;flex:1;overflow-y:auto;border-radius:10px;border:1px solid var(--border-md);padding:4px;min-height:0;"></div>
-  <div style="padding:16px 20px 40px;display:flex;gap:10px;flex-wrap:wrap;">
-    <button onclick="_fitRunCancel()" style="flex:1;padding:14px;background:none;color:var(--danger,#e05);border:1px solid rgba(220,50,50,.35);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✕ Cancel</button>
-    <button onclick="_fitRunSkip()" style="flex:1;padding:14px;background:var(--surface2);color:var(--text-muted);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">Skip →</button>
-    <button onclick="_fitRunFinish()" style="flex:2;padding:14px;background:var(--accent);color:#F5F3EE;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✓ Finish & Log</button>
+
+  <!-- Summary screen (shown when all intervals complete) -->
+  <div id="frv-summary" style="display:none;flex:1;flex-direction:column;min-height:0;">
+    <div id="frv-summary-content" style="flex:1;overflow-y:auto;padding:24px 20px;text-align:center;"></div>
+    <div style="padding:10px 16px 36px;display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="_fitRunCancel()" style="flex:1;padding:14px;background:none;color:var(--danger,#e05);border:1px solid rgba(220,50,50,.35);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;">✕ Discard</button>
+      <button onclick="_fitRunAutoSave()" style="flex:3;padding:14px;background:var(--accent);color:#F5F3EE;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Save Run</button>
+    </div>
   </div>
 </div>
 
@@ -6768,36 +6789,150 @@ let fitCardioIntervals=[];
 function fitStartRunView(planIdx){
   const session=FIT_RUN_PLAN[Math.min(planIdx,FIT_RUN_PLAN.length-1)];
   if(!session||!session.intervals.length)return;
-  _fitRunActive={planIdx,ivIdx:0,secsLeft:Math.round(session.intervals[0].dur*60),totalSecs:0,timer:null};
-  _fitRunRender();
+  const ivSecs=Math.round(session.intervals[0].dur*60);
+  const now=Date.now();
+  _fitRunActive={
+    planIdx,ivIdx:0,
+    ivTotalSecs:ivSecs,secsLeft:ivSecs,
+    ivStartWall:now,
+    sessionStartWall:now,sessionResumeWall:now,
+    pausedTotalSecs:0,totalSecs:0,
+    paused:false,timer:null
+  };
   const el=document.getElementById('fit-run-view');
   if(el){el.style.display='flex';}
-  _fitRunActive.timer=setInterval(_fitRunTick,1000);
+  document.getElementById('frv-active').style.display='flex';
+  document.getElementById('frv-summary').style.display='none';
+  _fitRunRender();
+  _fitRunActive.timer=setInterval(_fitRunTick,250);
 }
 function _fitRunTick(){
-  if(!_fitRunActive)return;
-  _fitRunActive.secsLeft--;
-  _fitRunActive.totalSecs++;
+  if(!_fitRunActive||_fitRunActive.paused)return;
+  const now=Date.now();
+  const ivElapsed=Math.floor((now-_fitRunActive.ivStartWall)/1000);
+  _fitRunActive.secsLeft=Math.max(0,_fitRunActive.ivTotalSecs-ivElapsed);
+  _fitRunActive.totalSecs=_fitRunActive.pausedTotalSecs+Math.floor((now-_fitRunActive.sessionResumeWall)/1000);
   const cd=document.getElementById('frv-countdown');
   if(cd)cd.textContent=_fitFmtMSS(_fitRunActive.secsLeft);
   const el=document.getElementById('frv-elapsed');
   if(el)el.textContent=_fitFmtMSS(_fitRunActive.totalSecs);
+  const distEl=document.getElementById('frv-dist');
+  if(distEl){const km=_fitRunCalcKm();distEl.textContent=_fitRunUseMph?`${(km*0.621371).toFixed(2)} mi`:`${km.toFixed(2)} km`;}
   if(_fitRunActive.secsLeft<=0)_fitRunNextInterval();
+}
+function _fitRunCalcKm(){
+  if(!_fitRunActive)return 0;
+  const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
+  let km=0;
+  for(let i=0;i<_fitRunActive.ivIdx;i++)km+=session.intervals[i].pace*session.intervals[i].dur/60;
+  const cur=session.intervals[_fitRunActive.ivIdx];
+  if(cur){const elapsed=(_fitRunActive.ivTotalSecs-_fitRunActive.secsLeft);km+=cur.pace*elapsed/3600;}
+  return km;
 }
 function _fitRunNextInterval(){
   if(!_fitRunActive)return;
   const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
   _fitRunActive.ivIdx++;
-  if(_fitRunActive.ivIdx>=session.intervals.length){_fitRunFinish();return;}
-  _fitRunActive.secsLeft=Math.round(session.intervals[_fitRunActive.ivIdx].dur*60);
+  if(_fitRunActive.ivIdx>=session.intervals.length){_fitRunShowSummary();return;}
+  const ivSecs=Math.round(session.intervals[_fitRunActive.ivIdx].dur*60);
+  _fitRunActive.ivTotalSecs=ivSecs;
+  _fitRunActive.secsLeft=ivSecs;
+  _fitRunActive.ivStartWall=Date.now();
   _fitRunRender();
 }
 function _fitRunSkip(){_fitRunNextInterval();}
+function _fitRunTogglePause(){
+  if(!_fitRunActive)return;
+  if(_fitRunActive.paused){
+    // Resume
+    const now=Date.now();
+    _fitRunActive.ivStartWall=now-(_fitRunActive.ivTotalSecs-_fitRunActive.secsLeft)*1000;
+    _fitRunActive.sessionResumeWall=now;
+    _fitRunActive.paused=false;
+    if(!_fitRunActive.timer)_fitRunActive.timer=setInterval(_fitRunTick,250);
+    const btn=document.getElementById('frv-pause-btn');
+    if(btn){btn.textContent='⏸ Pause';btn.style.background='var(--surface2)';btn.style.color='var(--text)';}
+  } else {
+    // Pause
+    const now=Date.now();
+    const ivElapsed=Math.floor((now-_fitRunActive.ivStartWall)/1000);
+    _fitRunActive.secsLeft=Math.max(0,_fitRunActive.ivTotalSecs-ivElapsed);
+    _fitRunActive.pausedTotalSecs=_fitRunActive.pausedTotalSecs+Math.floor((now-_fitRunActive.sessionResumeWall)/1000);
+    _fitRunActive.paused=true;
+    if(_fitRunActive.timer){clearInterval(_fitRunActive.timer);_fitRunActive.timer=null;}
+    const btn=document.getElementById('frv-pause-btn');
+    if(btn){btn.textContent='▶ Resume';btn.style.background='var(--accent)';btn.style.color='#F5F3EE';}
+  }
+}
 function _fitRunFinish(){
-  if(_fitRunActive&&_fitRunActive.timer)clearInterval(_fitRunActive.timer);
+  // Manual early finish — show summary with however far we got
+  if(_fitRunActive&&!_fitRunActive.paused){
+    const now=Date.now();
+    _fitRunActive.totalSecs=_fitRunActive.pausedTotalSecs+Math.floor((now-_fitRunActive.sessionResumeWall)/1000);
+  }
+  _fitRunShowSummary();
+}
+function _fitRunShowSummary(){
+  if(_fitRunActive&&_fitRunActive.timer){clearInterval(_fitRunActive.timer);_fitRunActive.timer=null;}
+  if(!_fitRunActive)return;
+  const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
+  const totalKm=_fitRunCalcKm();
+  let runMin=0,walkMin=0,runKm=0,walkKm=0;
+  const doneIdx=_fitRunActive.ivIdx;
+  session.intervals.forEach((iv,i)=>{
+    if(i<doneIdx){
+      const km=iv.pace*iv.dur/60;
+      if(iv.t==='run'){runMin+=iv.dur;runKm+=km;}else{walkMin+=iv.dur;walkKm+=km;}
+    } else if(i===doneIdx){
+      const elapsedMin=(_fitRunActive.ivTotalSecs-_fitRunActive.secsLeft)/60;
+      const km=iv.pace*elapsedMin/60;
+      if(iv.t==='run'){runMin+=elapsedMin;runKm+=km;}else{walkMin+=elapsedMin;walkKm+=km;}
+    }
+  });
+  const fmtT=m=>m<1?Math.round(m*60)+'s':(Number.isInteger(Math.round(m))?Math.round(m):m.toFixed(1))+'min';
+  const fmtD=k=>_fitRunUseMph?`${(k*0.621371).toFixed(2)} mi`:`${k.toFixed(2)} km`;
+  const totalMin=_fitRunActive.totalSecs/60;
+  const sc=document.getElementById('frv-summary-content');
+  if(sc)sc.innerHTML=`
+    <div style="font-size:48px;margin-bottom:10px;">🏁</div>
+    <div style="font-size:24px;font-family:'Fraunces',serif;font-weight:400;margin-bottom:4px;">${esc(session.wLabel)}</div>
+    <div style="font-size:13px;color:var(--text-faint);margin-bottom:24px;">Session ${session.s} of ${FIT_RUN_PLAN.length}</div>
+    <div style="display:flex;gap:0;padding:16px 12px;background:var(--surface2);border-radius:14px;margin-bottom:16px;">
+      <div style="flex:1;text-align:center;"><div style="font-size:26px;font-weight:700;font-family:'Fraunces',serif;">${_fitFmtMSS(_fitRunActive.totalSecs)}</div><div style="font-size:11px;color:var(--text-faint);">Total time</div><div style="font-size:14px;font-weight:600;color:var(--accent);margin-top:4px;">${fmtD(totalKm)}</div></div>
+      <div style="width:1px;background:var(--border-md);margin:4px 0;"></div>
+      <div style="flex:1;text-align:center;"><div style="font-size:26px;font-weight:700;font-family:'Fraunces',serif;color:#c0392b;">${fmtT(runMin)}</div><div style="font-size:11px;color:var(--text-faint);">Running</div><div style="font-size:14px;font-weight:600;color:#c0392b;margin-top:4px;">${fmtD(runKm)}</div></div>
+      <div style="width:1px;background:var(--border-md);margin:4px 0;"></div>
+      <div style="flex:1;text-align:center;"><div style="font-size:26px;font-weight:700;font-family:'Fraunces',serif;color:#219150;">${fmtT(walkMin)}</div><div style="font-size:11px;color:var(--text-faint);">Walking</div><div style="font-size:14px;font-weight:600;color:#219150;margin-top:4px;">${fmtD(walkKm)}</div></div>
+    </div>`;
+  document.getElementById('frv-active').style.display='none';
+  document.getElementById('frv-summary').style.display='flex';
+}
+function _fitRunAutoSave(){
+  if(!_fitRunActive)return;
+  const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
+  const planIdx=_fitRunActive.planIdx;
+  const doneIdx=_fitRunActive.ivIdx;
+  const intervals=session.intervals.map((iv,i)=>{
+    if(i<doneIdx)return{type:iv.t==='run'?'run':'walk',distanceKm:Math.round(iv.pace*iv.dur/60*1000)/1000,durationSec:Math.round(iv.dur*60),speedKmh:iv.pace};
+    if(i===doneIdx){const elapsedSec=_fitRunActive.ivTotalSecs-_fitRunActive.secsLeft;if(elapsedSec>5)return{type:iv.t==='run'?'run':'walk',distanceKm:Math.round(iv.pace*elapsedSec/3600*1000)/1000,durationSec:elapsedSec,speedKmh:iv.pace};return null;}
+    return null;
+  }).filter(Boolean);
+  const dateStr=new Date().toISOString().slice(0,10);
+  const entry={id:'cs_'+Date.now(),type:'cardio',name:`Week ${session.w} — ${session.wLabel}`,date:dateStr,intervals,planSessionIdx:planIdx,effort:null,notes:''};
+  fitSessions.push(entry);
+  fitSessions.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  fitRunSessionIdx=Math.min(fitRunSessionIdx+1,FIT_RUN_PLAN.length-1);
+  fitRunViewIdx=fitRunSessionIdx;
+  save();
   _fitRunActive=null;
   const el=document.getElementById('fit-run-view');if(el)el.style.display='none';
-  fitOpenCardioModal();
+  // Show feedback modal
+  fitFeedbackSessionId=entry.id;fitFeedbackEffortVal=null;
+  const lbl=document.getElementById('fit-feedback-session-label');if(lbl)lbl.textContent=entry.name;
+  ['easy','ok','hard'].forEach(e=>{const b=document.getElementById('fb-'+e);if(b)b.style.borderColor='var(--border-md)';});
+  const notesEl=document.getElementById('fit-feedback-notes');if(notesEl)notesEl.value='';
+  openM('fit-feedback-modal');
+  rFitRunning();rFitHistory();rFitToday();
 }
 function _fitRunCancel(){
   if(!confirm('Cancel this run? No data will be saved.'))return;
@@ -6814,12 +6949,17 @@ function _fitRunRender(){
   if(!_fitRunActive)return;
   const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
   const iv=session.intervals[_fitRunActive.ivIdx];
+  if(!iv)return;
   const isRun=iv.t==='run';
   const color=isRun?'#c0392b':'#219150';
   const lbl=document.getElementById('frv-session-label');
   if(lbl)lbl.textContent=`Session ${session.s} of ${FIT_RUN_PLAN.length} · Week ${session.w}`;
   const nm=document.getElementById('frv-session-name');
   if(nm)nm.textContent=session.wLabel;
+  const distEl=document.getElementById('frv-dist');
+  if(distEl){const km=_fitRunCalcKm();distEl.textContent=_fitRunUseMph?`${(km*0.621371).toFixed(2)} mi`:`${km.toFixed(2)} km`;}
+  const elEl=document.getElementById('frv-elapsed');
+  if(elEl)elEl.textContent=_fitFmtMSS(_fitRunActive.totalSecs);
   const typ=document.getElementById('frv-interval-type');
   if(typ){typ.textContent=(iv.lbl||(isRun?'Run':'Walk')).toUpperCase();typ.style.color=color;}
   const cd=document.getElementById('frv-countdown');
