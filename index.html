@@ -1407,14 +1407,17 @@ details>summary::marker{display:none;}
       <div id="frv-elapsed" style="font-size:14px;font-weight:600;color:var(--text-muted);">0:00</div>
     </div>
   </div>
-  <div style="text-align:center;padding:36px 24px 20px;flex:1;">
-    <div id="frv-interval-type" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin-bottom:10px;"></div>
-    <div id="frv-countdown" style="font-size:80px;font-weight:700;font-family:'Fraunces',serif;line-height:1;margin-bottom:12px;"></div>
-    <div id="frv-speed" style="font-size:15px;color:var(--text-muted);"></div>
-    <div id="frv-next-wrap" style="margin:20px auto 0;max-width:320px;padding:10px 16px;background:var(--surface2);border-radius:10px;font-size:13px;text-align:left;"></div>
+  <div style="text-align:center;padding:16px 20px 10px;">
+    <div id="frv-interval-type" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px;"></div>
+    <div id="frv-countdown" style="font-size:80px;font-weight:700;font-family:'Fraunces',serif;line-height:1;margin-bottom:8px;"></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+      <div id="frv-speed" style="font-size:16px;font-weight:500;color:var(--text-muted);"></div>
+      <button onclick="_fitRunToggleUnit()" id="frv-unit-btn" style="font-size:11px;color:var(--text-faint);background:var(--surface2);border:1px solid var(--border-md);border-radius:20px;padding:3px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;">km/h ↔ mph</button>
+    </div>
+    <div id="frv-next-wrap" style="margin:12px 0 0;padding:14px 18px;background:var(--surface2);border-radius:14px;font-size:15px;text-align:left;"></div>
   </div>
-  <div style="margin:0 16px 8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;">All intervals</div>
-  <div id="frv-intervals" style="margin:0 16px;overflow-y:auto;max-height:200px;border-radius:10px;border:1px solid var(--border-md);padding:4px;"></div>
+  <div style="margin:10px 16px 5px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;">All intervals</div>
+  <div id="frv-intervals" style="margin:0 16px;flex:1;overflow-y:auto;border-radius:10px;border:1px solid var(--border-md);padding:4px;min-height:0;"></div>
   <div style="padding:16px 20px 40px;display:flex;gap:10px;flex-wrap:wrap;">
     <button onclick="_fitRunCancel()" style="flex:1;padding:14px;background:none;color:var(--danger,#e05);border:1px solid rgba(220,50,50,.35);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✕ Cancel</button>
     <button onclick="_fitRunSkip()" style="flex:1;padding:14px;background:var(--surface2);color:var(--text-muted);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">Skip →</button>
@@ -2141,6 +2144,7 @@ let fitExMuscleFilter='';  // muscle group filter for Exercises tab
 let _fitRestSecs=0;        // rest timer countdown
 let _fitRestInterval=null; // rest timer interval id
 let _fitRunActive=null;    // interactive run view state
+let _fitRunUseMph=false;   // speed unit toggle in run view
 let fitEditingGroupId=null;
 let fitEditingExId=null;
 let fitEditingDayName=null;
@@ -6820,16 +6824,19 @@ function _fitRunRender(){
   if(typ){typ.textContent=(iv.lbl||(isRun?'Run':'Walk')).toUpperCase();typ.style.color=color;}
   const cd=document.getElementById('frv-countdown');
   if(cd){cd.textContent=_fitFmtMSS(_fitRunActive.secsLeft);cd.style.color=color;}
+  const _frvSpd=kmh=>_fitRunUseMph?`${(kmh*0.621371).toFixed(1)} mph`:`${kmh} km/h`;
   const spd=document.getElementById('frv-speed');
-  if(spd)spd.textContent=`${iv.pace} km/h`;
+  if(spd)spd.textContent=_frvSpd(iv.pace);
+  const unitBtn=document.getElementById('frv-unit-btn');
+  if(unitBtn)unitBtn.textContent=_fitRunUseMph?'mph ↔ km/h':'km/h ↔ mph';
   const nextIv=session.intervals[_fitRunActive.ivIdx+1];
   const nw=document.getElementById('frv-next-wrap');
   if(nw){
     if(nextIv){
       const ni=nextIv.t==='run';
-      nw.innerHTML=`<span style="font-size:11px;color:var(--text-faint);">Up next — </span><span style="color:${ni?'#c0392b':'#219150'};font-weight:600;">${(nextIv.lbl||(ni?'Run':'Walk'))}</span><span style="color:var(--text-muted);"> · ${_fitFmtMSS(Math.round(nextIv.dur*60))} @ ${nextIv.pace} km/h</span>`;
+      nw.innerHTML=`<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);margin-bottom:4px;">Up next</div><span style="font-size:20px;font-weight:700;color:${ni?'#c0392b':'#219150'};">${esc(nextIv.lbl||(ni?'Run':'Walk'))}</span><span style="font-size:14px;color:var(--text-muted);"> · ${_fitFmtMSS(Math.round(nextIv.dur*60))} @ ${_frvSpd(nextIv.pace)}</span>`;
     } else {
-      nw.innerHTML=`<span style="font-size:12px;color:#219150;font-weight:600;">🏁 Last interval</span>`;
+      nw.innerHTML=`<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);margin-bottom:4px;">Up next</div><span style="font-size:18px;font-weight:700;color:#219150;">🏁 Last interval</span>`;
     }
   }
   const el=document.getElementById('frv-intervals');
@@ -6840,7 +6847,7 @@ function _fitRunRender(){
       return`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;margin-bottom:2px;background:${isCur?`rgba(${ir?'192,57,43':'39,174,96'},.08)`:'transparent'};opacity:${isDone?'.4':'1'};">
         <span style="font-size:10px;font-weight:700;color:${c};min-width:34px;">${ir?'RUN':'WALK'}</span>
         <span style="font-size:12px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(intv.lbl||'')}</span>
-        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${_fitFmtMSS(Math.round(intv.dur*60))} @ ${intv.pace}</span>
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${_fitFmtMSS(Math.round(intv.dur*60))} @ ${_fitRunUseMph?(intv.pace*0.621371).toFixed(1)+'mph':intv.pace}</span>
         ${isCur?`<span style="font-size:9px;background:${c};color:#fff;padding:1px 5px;border-radius:6px;white-space:nowrap;">NOW</span>`:(isDone?'<span style="color:var(--text-faint);">✓</span>':'')}
       </div>`;
     }).join('');
@@ -7003,6 +7010,7 @@ function fitRunAdvance(){
 function fitRunRepeat(){showToast('Repeating current session — just log it again.');}
 function fitRunViewPrev(){fitRunViewIdx=Math.max(0,fitRunViewIdx-1);rFitRunning();}
 function fitRunViewNext(){fitRunViewIdx=Math.min(FIT_RUN_PLAN.length-1,fitRunViewIdx+1);rFitRunning();}
+function _fitRunToggleUnit(){_fitRunUseMph=!_fitRunUseMph;_fitRunRender();}
 function _fitRunSessionSummary(session){
   if(!session)return'';
   let tMin=0,wMin=0,rMin=0,tKm=0,wKm=0,rKm=0;
