@@ -1415,9 +1415,10 @@ details>summary::marker{display:none;}
   </div>
   <div style="margin:0 16px 8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;">All intervals</div>
   <div id="frv-intervals" style="margin:0 16px;overflow-y:auto;max-height:200px;border-radius:10px;border:1px solid var(--border-md);padding:4px;"></div>
-  <div style="padding:16px 20px 40px;display:flex;gap:10px;">
-    <button onclick="_fitRunSkip()" style="flex:1;padding:14px;background:var(--surface2);color:var(--text-muted);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;">Skip →</button>
-    <button onclick="_fitRunFinish()" style="flex:1;padding:14px;background:var(--accent);color:#F5F3EE;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Finish & Log</button>
+  <div style="padding:16px 20px 40px;display:flex;gap:10px;flex-wrap:wrap;">
+    <button onclick="_fitRunCancel()" style="flex:1;padding:14px;background:none;color:var(--danger,#e05);border:1px solid rgba(220,50,50,.35);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✕ Cancel</button>
+    <button onclick="_fitRunSkip()" style="flex:1;padding:14px;background:var(--surface2);color:var(--text-muted);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">Skip →</button>
+    <button onclick="_fitRunFinish()" style="flex:2;padding:14px;background:var(--accent);color:#F5F3EE;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;">✓ Finish & Log</button>
   </div>
 </div>
 
@@ -6782,6 +6783,12 @@ function _fitRunFinish(){
   _fitRunActive=null;
   const el=document.getElementById('fit-run-view');if(el)el.style.display='none';
   fitOpenCardioModal();
+}
+function _fitRunCancel(){
+  if(!confirm('Cancel this run? No data will be saved.'))return;
+  if(_fitRunActive&&_fitRunActive.timer)clearInterval(_fitRunActive.timer);
+  _fitRunActive=null;
+  const el=document.getElementById('fit-run-view');if(el)el.style.display='none';
 }
 function _fitFmtMSS(secs){
   if(secs<0)secs=0;
