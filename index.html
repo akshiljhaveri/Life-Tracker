@@ -7162,16 +7162,16 @@ function fitRunAdvance(){
   save();rFitRunning();rFitHistory();showToast('✓ Session logged!');
 }
 function _fitLastPlanRun(){
-  // Find the most recently logged plan run (has planSessionIdx) — used for undo
-  return fitSessions.filter(s=>s.type==='cardio'&&typeof s.planSessionIdx==='number').sort((a,b)=>b.id.localeCompare(a.id))[0]||null;
+  return fitSessions.filter(s=>s.type==='cardio').sort((a,b)=>b.id.localeCompare(a.id))[0]||null;
 }
 function fitRunUndoComplete(){
   const last=_fitLastPlanRun();
   if(!last)return;
-  if(!confirm(`Remove "${last.name}" from history and revert to that session?`))return;
+  if(!confirm(`Remove "${last.name}" from history?`))return;
   fitSessions=fitSessions.filter(s=>s.id!==last.id);
-  fitRunSessionIdx=last.planSessionIdx;
-  fitRunViewIdx=fitRunSessionIdx;
+  const prevIdx=typeof last.planSessionIdx==='number'?last.planSessionIdx:Math.max(0,fitRunSessionIdx-1);
+  fitRunSessionIdx=prevIdx;
+  fitRunViewIdx=prevIdx;
   save();rFitRunning();rFitHistory();showToast('Run removed.');
 }
 function fitRunRepeat(){showToast('Repeating current session — just log it again.');}
@@ -7287,8 +7287,8 @@ function rFitRunning(){
       ${isCurrentView?`<button class="fit-ghost-btn" onclick="fitRunAdvance()" style="font-size:11px;flex:1;">Mark complete ▶</button>
       <button class="fit-ghost-btn" onclick="fitRunRepeat()" style="font-size:11px;flex:1;">↩ Repeat</button>`:`<button class="fit-ghost-btn" onclick="fitRunViewIdx=${currentSessionIdx};rFitRunning()" style="font-size:11px;flex:1;color:var(--text-muted);">← Back to current</button>`}
     </div>
+    ${(()=>{const lr=_fitLastPlanRun();return lr?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);text-align:center;"><button onclick="fitRunUndoComplete()" style="font-size:12px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:4px 8px;font-family:'DM Sans',sans-serif;text-decoration:underline;">↩ Undo: ${esc(lr.name)}</button></div>`:'';})()}
   </div>`:'<div style="padding:1rem;text-align:center;font-size:14px;color:var(--text-muted);">🏆 Program complete!</div>'}
-  ${(()=>{const lr=_fitLastPlanRun();return lr?`<div style="text-align:center;margin-bottom:.75rem;"><button onclick="fitRunUndoComplete()" style="font-size:12px;color:var(--text-muted);background:none;border:1px solid var(--border-md);border-radius:8px;padding:6px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;">↩ Undo: ${esc(lr.name)}</button></div>`:'';})()}
   <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:8px;font-weight:500;">Program Progress</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
