@@ -2156,7 +2156,6 @@ let fitHistCalYear=new Date().getFullYear();
 let fitHistCalMonth=new Date().getMonth();
 let fitRunSessionIdx=0;    // 0-based index into FIT_RUN_PLAN
 let fitRunViewIdx=0;       // which session is currently shown in the Running tab (browse without advancing)
-let fitRunLastAutoLog=null; // {sessionId, prevIdx} — supports undo after Mark complete
 let bodyMetrics=[];        // [{date,time,weight,bmi,bodyFat,skeletalMuscle,fatFreeMass,subcutaneousFat,visceralFat,bodyWater,muscleMass,boneMass,protein,bmr,metabolicAge}]
 let fitFeedbackSessionId=null;
 let fitFeedbackEffortVal=null;
@@ -7157,19 +7156,23 @@ function fitRunAdvance(){
     const entry={id:'cs_'+Date.now(),type:'cardio',name:`Week ${sessionToLog.w} — ${sessionToLog.wLabel}`,date:dateStr,intervals,planSessionIdx:planIdx,effort:null,notes:''};
     fitSessions.push(entry);
     fitSessions.sort((a,b)=>new Date(a.date)-new Date(b.date));
-    fitRunLastAutoLog={sessionId:entry.id,prevIdx:fitRunSessionIdx};
   }
   fitRunSessionIdx=Math.min(fitRunSessionIdx+1,FIT_RUN_PLAN.length-1);
   fitRunViewIdx=fitRunSessionIdx;
   save();rFitRunning();rFitHistory();showToast('✓ Session logged!');
 }
+function _fitLastPlanRun(){
+  // Find the most recently logged plan run (has planSessionIdx) — used for undo
+  return fitSessions.filter(s=>s.type==='cardio'&&typeof s.planSessionIdx==='number').sort((a,b)=>b.id.localeCompare(a.id))[0]||null;
+}
 function fitRunUndoComplete(){
-  if(!fitRunLastAutoLog)return;
-  fitSessions=fitSessions.filter(s=>s.id!==fitRunLastAutoLog.sessionId);
-  fitRunSessionIdx=fitRunLastAutoLog.prevIdx;
+  const last=_fitLastPlanRun();
+  if(!last)return;
+  if(!confirm(`Remove "${last.name}" from history and revert to that session?`))return;
+  fitSessions=fitSessions.filter(s=>s.id!==last.id);
+  fitRunSessionIdx=last.planSessionIdx;
   fitRunViewIdx=fitRunSessionIdx;
-  fitRunLastAutoLog=null;
-  save();rFitRunning();rFitHistory();showToast('Undone.');
+  save();rFitRunning();rFitHistory();showToast('Run removed.');
 }
 function fitRunRepeat(){showToast('Repeating current session — just log it again.');}
 function fitRunViewPrev(){fitRunViewIdx=Math.max(0,fitRunViewIdx-1);rFitRunning();}
@@ -7285,9 +7288,7 @@ function rFitRunning(){
       <button class="fit-ghost-btn" onclick="fitRunRepeat()" style="font-size:11px;flex:1;">↩ Repeat</button>`:`<button class="fit-ghost-btn" onclick="fitRunViewIdx=${currentSessionIdx};rFitRunning()" style="font-size:11px;flex:1;color:var(--text-muted);">← Back to current</button>`}
     </div>
   </div>`:'<div style="padding:1rem;text-align:center;font-size:14px;color:var(--text-muted);">🏆 Program complete!</div>'}
-  ${fitRunLastAutoLog?`<div style="text-align:center;margin-bottom:.75rem;">
-    <button onclick="fitRunUndoComplete()" style="font-size:12px;color:var(--text-muted);background:none;border:1px solid var(--border-md);border-radius:8px;padding:6px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;">↩ Undo last complete</button>
-  </div>`:''}
+  ${(()=>{const lr=_fitLastPlanRun();return lr?`<div style="text-align:center;margin-bottom:.75rem;"><button onclick="fitRunUndoComplete()" style="font-size:12px;color:var(--text-muted);background:none;border:1px solid var(--border-md);border-radius:8px;padding:6px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;">↩ Undo: ${esc(lr.name)}</button></div>`:'';})()}
   <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:1rem;">
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:8px;font-weight:500;">Program Progress</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
