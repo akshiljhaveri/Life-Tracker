@@ -1395,6 +1395,32 @@ details>summary::marker{display:none;}
   </div>
 </div>
 
+<!-- INTERACTIVE RUN VIEW -->
+<div id="fit-run-view" style="display:none;position:fixed;inset:0;z-index:3000;background:var(--surface);overflow:hidden;display:none;flex-direction:column;">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border-md);">
+    <div>
+      <div id="frv-session-label" style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;"></div>
+      <div id="frv-session-name" style="font-size:17px;font-family:'Fraunces',serif;font-weight:400;"></div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:10px;color:var(--text-faint);">Elapsed</div>
+      <div id="frv-elapsed" style="font-size:14px;font-weight:600;color:var(--text-muted);">0:00</div>
+    </div>
+  </div>
+  <div style="text-align:center;padding:36px 24px 20px;flex:1;">
+    <div id="frv-interval-type" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;margin-bottom:10px;"></div>
+    <div id="frv-countdown" style="font-size:80px;font-weight:700;font-family:'Fraunces',serif;line-height:1;margin-bottom:12px;"></div>
+    <div id="frv-speed" style="font-size:15px;color:var(--text-muted);"></div>
+    <div id="frv-next-wrap" style="margin:20px auto 0;max-width:320px;padding:10px 16px;background:var(--surface2);border-radius:10px;font-size:13px;text-align:left;"></div>
+  </div>
+  <div style="margin:0 16px 8px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;">All intervals</div>
+  <div id="frv-intervals" style="margin:0 16px;overflow-y:auto;max-height:200px;border-radius:10px;border:1px solid var(--border-md);padding:4px;"></div>
+  <div style="padding:16px 20px 40px;display:flex;gap:10px;">
+    <button onclick="_fitRunSkip()" style="flex:1;padding:14px;background:var(--surface2);color:var(--text-muted);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;">Skip →</button>
+    <button onclick="_fitRunFinish()" style="flex:1;padding:14px;background:var(--accent);color:#F5F3EE;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Finish & Log</button>
+  </div>
+</div>
+
 <!-- FITNESS FEEDBACK MODAL -->
 <div class="mo" id="fit-feedback-modal">
   <div class="modal" style="max-width:400px;">
@@ -1429,7 +1455,7 @@ details>summary::marker{display:none;}
       <button onclick="closeM('fit-edit-day-modal')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">×</button>
     </div>
     <div id="fit-edit-day-rec" style="margin-bottom:12px;"></div>
-    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Scheduled exercises</div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Scheduled sessions</div>
     <div id="fit-edit-day-exercises" style="max-height:50vh;overflow-y:auto;"></div>
     <button onclick="fitClearScheduleDate(window._fitEditDate);closeM('fit-edit-day-modal')" style="width:100%;margin-top:12px;font-size:12px;padding:8px;border-radius:8px;border:1px solid #c0392b;color:#c0392b;background:none;cursor:pointer;">✕ Clear schedule for this day</button>
   </div>
@@ -2112,6 +2138,7 @@ let fitSheetUnit='kg';     // per-set unit toggle in sheet
 let fitExMuscleFilter='';  // muscle group filter for Exercises tab
 let _fitRestSecs=0;        // rest timer countdown
 let _fitRestInterval=null; // rest timer interval id
+let _fitRunActive=null;    // interactive run view state
 let fitEditingGroupId=null;
 let fitEditingExId=null;
 let fitEditingDayName=null;
@@ -4262,7 +4289,8 @@ function rFitToday(){
         return{...e,type:'lifting',groupId:e.groupId||e.id,exerciseIds:e.exerciseIds||[]};
       return e;
     });
-    const liftEntry=entries.find(x=>x.type==='lifting');
+    const liftEntries=entries.filter(x=>x.type==='lifting');
+    const liftEntry=liftEntries[0]||null;
     const runEntry=entries.find(x=>x.type==='run');
     const recovEntry=entries.find(x=>x.type==='recovery');
     const restEntry=entries.find(x=>x.type==='rest');
@@ -4275,9 +4303,14 @@ function rFitToday(){
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Head to the Schedule tab to plan your workout.</div>
         <button class="fit-ghost-btn" onclick="setFitTab('schedule')" style="font-size:12px;">→ Go to Schedule</button>
       </div>`;
-    } else if(liftEntry){
-      const todayLiftDone=fitSessions.some(s=>s.date===dateStr&&s.type==='lifting');
-      if(todayLiftDone){
+    } else if(liftEntries.length){
+      const _isLiftDone=e=>{
+        if(fitSessions.some(s=>s.date===dateStr&&s.type==='lifting'&&s.groupId===e.groupId))return true;
+        if(liftEntries.length===1&&fitSessions.some(s=>s.date===dateStr&&s.type==='lifting'))return true;
+        return false;
+      };
+      const allDone=liftEntries.every(_isLiftDone);
+      if(allDone){
         html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:28px 24px;text-align:center;">
           <div style="font-size:36px;margin-bottom:10px;">✅</div>
           <div style="font-size:17px;font-weight:600;margin-bottom:4px;">All done for today!</div>
@@ -4289,40 +4322,62 @@ function rFitToday(){
         </div>`;
         el.innerHTML=html;return;
       }
-      const g=fitGroups.find(x=>x.id===liftEntry.groupId);
-      const exIds=liftEntry.exerciseIds||(g?.exerciseIds||[]);
-      const emoji=g?.muscles?.includes('Chest')||g?.muscles?.includes('Triceps')?'💪':g?.muscles?.includes('Lats')?'🏋️':g?.muscles?.includes('Quads')?'🦵':'💪';
-      const exRows=exIds.map(eid=>{
-        const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
-        const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
-        const mc=FIT_MUSCLE_COLORS[(ex.muscles||[])[0]]||FIT_MUSCLE_COLORS['Other'];
-        const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:${mc.bg};color:${mc.c};">${esc(m)}</span>`).join(' ');
-        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
-          <div><div style="font-size:14px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:3px;">${muscles}</div></div>
-          <div style="text-align:right;">${isBW?`<div style="font-size:13px;font-weight:600;color:var(--accent);">BW × ${r} ${isSec?'sec':'reps'}</div>`:`<div style="font-size:13px;font-weight:600;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:10.5px;color:var(--text-faint);">${s} sets</div></div>
-        </div>`;
-      }).join('');
-      html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:18px 20px;margin-bottom:12px;">
-        <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Today's Session</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:400;">${emoji} ${esc(g?.name||'Workout')}</div>
-          <div style="display:flex;gap:6px;">
-            <button onclick="fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--text-muted);">✏️ Edit</button>
-            <button onclick="fitStartWorkoutFromSchedule('${dateStr}')" style="font-size:12px;padding:5px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
-          </div>
-        </div>
-        ${exRows}
-      </div>`;
+      liftEntries.forEach(liftEntry=>{
+        const done=_isLiftDone(liftEntry);
+        const g=fitGroups.find(x=>x.id===liftEntry.groupId);
+        const exIds=liftEntry.exerciseIds||(g?.exerciseIds||[]);
+        const emoji=g?.muscles?.includes('Chest')||g?.muscles?.includes('Triceps')?'💪':g?.muscles?.includes('Lats')?'🏋️':g?.muscles?.includes('Quads')?'🦵':'💪';
+        if(done){
+          html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:20px;">✅</span>
+              <div><div style="font-size:14px;font-weight:600;">${esc(g?.name||'Workout')}</div><div style="font-size:11px;color:var(--text-faint);">Done</div></div>
+            </div>
+            <button class="fit-ghost-btn" onclick="setFitTab('history')" style="font-size:11px;">View →</button>
+          </div>`;
+        } else {
+          const exRows=exIds.map(eid=>{
+            const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
+            const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+            const mc=FIT_MUSCLE_COLORS[(ex.muscles||[])[0]]||FIT_MUSCLE_COLORS['Other'];
+            const muscles=(ex.muscles||[]).slice(0,2).map(m=>`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:${mc.bg};color:${mc.c};">${esc(m)}</span>`).join(' ');
+            return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+              <div><div style="font-size:14px;font-weight:500;">${esc(ex.name)}</div><div style="margin-top:3px;">${muscles}</div></div>
+              <div style="text-align:right;">${isBW?`<div style="font-size:13px;font-weight:600;color:var(--accent);">BW × ${r} ${isSec?'sec':'reps'}</div>`:`<div style="font-size:13px;font-weight:600;color:var(--accent);">${w} lbs × ${r}</div>`}<div style="font-size:10.5px;color:var(--text-faint);">${s} sets</div></div>
+            </div>`;
+          }).join('');
+          const gid=liftEntry.groupId;
+          html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:18px 20px;margin-bottom:12px;">
+            <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Today's Session</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:400;">${emoji} ${esc(g?.name||'Workout')}</div>
+              <div style="display:flex;gap:6px;">
+                <button onclick="fitEditScheduleDay('${dateStr}')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--border-md);background:none;cursor:pointer;color:var(--text-muted);">✏️ Edit</button>
+                <button onclick="fitStartWorkoutFromSchedule('${dateStr}','${gid}')" style="font-size:12px;padding:5px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
+              </div>
+            </div>
+            ${exRows}
+          </div>`;
+        }
+      });
     } else if(runEntry){
       const sIdx=Math.min(runEntry.planSessionIdx||0,FIT_RUN_PLAN.length-1);
       const session=FIT_RUN_PLAN[sIdx];
+      const totalMin=session?session.intervals.reduce((a,iv)=>a+iv.dur,0):0;
       const intervals=session?session.intervals.map(iv=>{const c=iv.t==='run'?'#c0392b':'#219150';const durStr=iv.dur===Math.floor(iv.dur)?iv.dur+'min':Math.round(iv.dur*60)+'s';return`<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:rgba(0,0,0,.05);color:${c};">${iv.t==='run'?'Run':'Walk'} ${durStr} @ ${iv.pace}km/h</span>`;}).join(' '):'';
       html+=`<div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border-md);padding:14px 16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div style="font-size:16px;font-weight:600;">🏃 ${session?esc(session.wLabel):'Run Session'}</div>
-          <button onclick="fitOpenCardioModal()" style="font-size:12px;padding:5px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Today's Run</div>
+            <div style="font-family:'Fraunces',serif;font-size:20px;font-weight:400;">🏃 ${session?esc(session.wLabel):'Run Session'}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="font-size:11px;color:var(--text-faint);">${totalMin?Math.round(totalMin)+'min':''}</span>
+            <button onclick="fitStartRunView(${sIdx})" style="font-size:12px;padding:5px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500;">▶ Start</button>
+          </div>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">${intervals}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">${intervals}</div>
+        <button onclick="fitOpenCardioModal()" style="margin-top:10px;font-size:11px;color:var(--text-faint);background:none;border:none;cursor:pointer;text-decoration:underline;">Skip to log manually →</button>
       </div>`;
     } else if(recovEntry){
       const sIdx=Math.min(recovEntry.planSessionIdx||0,FIT_ACTIVE_RECOVERY_PLAN.length-1);
@@ -4821,6 +4876,7 @@ function rFitSchedule(){
     const dayName=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][dayIdx===0?6:dayIdx-1];
     const manualSched=fitSchedule?.[d];
     let rec;
+    let multiLabel=null;
     if(manualSched&&Array.isArray(manualSched)&&manualSched.length>0){
       const m=manualSched[0];
       if(m.type==='run'||m.type==='cardio'){
@@ -4838,10 +4894,21 @@ function rFitSchedule(){
       } else {
         rec=fitGetRecommendation(d,simHistory);
       }
+      // Build combined label for multi-session days
+      if(manualSched.length>1){
+        const parts=manualSched.map(ms=>{
+          if(ms.type==='lifting'||ms.type==='group'){const g=fitGroups.find(x=>x.id===(ms.groupId||ms.id));return g?g.name:'Workout';}
+          if(ms.type==='run'||ms.type==='cardio')return'Cardio';
+          if(ms.type==='recovery')return'Recovery';
+          if(ms.type==='rest')return'Rest';
+          return'';
+        }).filter(Boolean);
+        multiLabel=parts.join(' + ');
+      }
     } else {
       rec=fitGetRecommendation(d,simHistory);
     }
-    days7.push({date:d,rec,dayName,hasManual:!!(manualSched&&Array.isArray(manualSched)&&manualSched.length>0)});
+    days7.push({date:d,rec,dayName,hasManual:!!(manualSched&&Array.isArray(manualSched)&&manualSched.length>0),multiLabel});
     if(rec.type==='lifting'&&rec.group)simHistory[rec.group.id]=d;
     else if(rec.type==='cardio'||rec.type==='run')simHistory['__cardio']=d;
   }
@@ -4849,7 +4916,7 @@ function rFitSchedule(){
   window._fitWeekRecs={};
   days7.forEach(({date,rec})=>{window._fitWeekRecs[date]=rec;});
   const todayStr=td();
-  const planRows=days7.map(({date,rec,dayName,hasManual})=>{
+  const planRows=days7.map(({date,rec,dayName,hasManual,multiLabel})=>{
     const isToday=date===todayStr;
     const dayLabel=new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
     const typeColor=rec.type==='rest'?'var(--text-faint)':rec.type==='recovery'?'#8E44AD':rec.type==='cardio'?'#c0392b':'var(--accent)';
@@ -4905,7 +4972,7 @@ function rFitSchedule(){
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="font-size:12px;font-weight:${isToday?600:400};color:${isToday?'var(--accent)':'var(--text-muted)'};min-width:60px;">${dayLabel}</div>
         <div style="flex:1;">
-          <div style="font-size:13px;font-weight:500;color:${typeColor};">${typeIcon} ${esc(rec.label)}</div>
+          <div style="font-size:13px;font-weight:500;color:${typeColor};">${typeIcon} ${esc(multiLabel||rec.label)}</div>
           <div style="font-size:11px;color:var(--text-faint);">${esc(rec.reason)}</div>
         </div>
         ${isToday?`<span style="font-size:10px;background:var(--accent);color:#F5F3EE;padding:2px 7px;border-radius:10px;white-space:nowrap;">TODAY</span>`:''}
@@ -4939,7 +5006,7 @@ function fitScheduleDay(dayName, rec){
   if(!rec||rec.type==='rest')return;
   if(!fitSchedule[dayName])fitSchedule[dayName]=[];
   if(rec.type==='lifting'&&rec.group){
-    fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='lifting'&&x.type!=='group');
+    fitSchedule[dayName]=fitSchedule[dayName].filter(x=>!((x.type==='lifting'||x.type==='group')&&(x.groupId||x.id)===rec.group.id));
     fitSchedule[dayName].push({type:'lifting',groupId:rec.group.id,exerciseIds:[...(rec.group.exerciseIds||[])]});
   } else if(rec.type==='cardio'){
     fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='run'&&x.type!=='cardio');
@@ -4960,7 +5027,7 @@ function fitScheduleDayLifting(dayName, groupId){
   const g=fitGroups.find(x=>x.id===groupId);
   if(!g)return;
   if(!fitSchedule[dayName])fitSchedule[dayName]=[];
-  fitSchedule[dayName]=fitSchedule[dayName].filter(x=>x.type!=='lifting'&&x.type!=='group');
+  fitSchedule[dayName]=fitSchedule[dayName].filter(x=>!((x.type==='lifting'||x.type==='group')&&(x.groupId||x.id)===g.id));
   fitSchedule[dayName].push({type:'lifting',groupId:g.id,exerciseIds:[...g.exerciseIds]});
   save();showToast(`${dayName} scheduled: ${g.name}`);rFitToday();rFitSchedule();
 }
@@ -4975,9 +5042,9 @@ function fitScheduleDayByDate(dateStr, rec){
   if(!rec)return;
   if(!fitSchedule[dateStr])fitSchedule[dateStr]=[];
   if(rec.type==='lifting'&&rec.group){
-    fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='lifting'&&x.type!=='group');
+    fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>!((x.type==='lifting'||x.type==='group')&&(x.groupId||x.id)===rec.group.id));
     fitSchedule[dateStr].push({type:'lifting',groupId:rec.group.id,exerciseIds:[...(rec.group.exerciseIds||[])]});
-    showToast(`${rec.group.name} scheduled for ${_fmtDateShort(dateStr)}`);
+    showToast(`${rec.group.name} added for ${_fmtDateShort(dateStr)}`);
   } else if(rec.type==='cardio'){
     fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>x.type!=='run'&&x.type!=='cardio');
     fitSchedule[dateStr].push({type:'run',planSessionIdx:Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1)});
@@ -4998,6 +5065,12 @@ function fitScheduleDayByDate(dateStr, rec){
 function fitClearScheduleDate(dateStr){
   delete fitSchedule[dateStr];
   save();rFitSchedule();rFitToday();
+}
+
+function fitRemoveLiftingSessionFromDate(dateStr, groupId){
+  if(!fitSchedule[dateStr])return;
+  fitSchedule[dateStr]=fitSchedule[dateStr].filter(x=>!((x.type==='lifting'||x.type==='group')&&(x.groupId||x.id)===groupId));
+  save();fitEditScheduleDay(dateStr);rFitSchedule();rFitToday();
 }
 
 function fitRemoveExFromDate(dateStr, groupId, exId){
@@ -5074,21 +5147,34 @@ function fitEditScheduleDay(dateStr){
     rec.type==='cardio'?'🏃 Run / Cardio':
     rec.type==='recovery'?'🚶 Active Recovery':'😴 Rest Day';
 
+  const liftingEntries=entries.filter(x=>x.type==='lifting');
   let exRows='';
-  if(entry){
-    exRows=(entry.exerciseIds||[]).map(eid=>{
-      const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
-      const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
-      const target=isBW?`BW × ${r}${isSec?' sec':''} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`;
-      const ei=eid.replace(/'/g,"\\'");const gi=entry.groupId.replace(/'/g,"\\'");const ds=dateStr.replace(/'/g,"\\'");
-      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-        <div style="min-width:0;flex:1;"><div style="font-size:13px;">${esc(ex.name)}</div><div style="font-size:10px;color:var(--text-faint);">${target}</div></div>
-        <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
-          <button onclick="fitRemoveExFromDate('${ds}','${gi}','${ei}')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:#c0392b;">✕</button>
-          <button onclick="fitReplaceExOnDate('${ds}','${gi}','${ei}')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--accent);">⇄</button>
+  if(liftingEntries.length){
+    const ds=dateStr.replace(/'/g,"\\'");
+    liftingEntries.forEach(liftingEntry=>{
+      const gLabel=fitGroups.find(x=>x.id===liftingEntry.groupId)?.name||'Workout';
+      const gi=liftingEntry.groupId.replace(/'/g,"\\'");
+      const eRows=(liftingEntry.exerciseIds||[]).map(eid=>{
+        const ex=fitExercises.find(x=>x.id===eid)||FIT_DEFAULT_EXERCISES.find(x=>x.id===eid);if(!ex)return'';
+        const isBW=ex.unit==='bw'||ex.unit==='sec';const isSec=ex.unit==='sec';const w=ex.targetWeight||ex.sw||0;const r=ex.targetReps||ex.sr||8;const s=ex.defaultSets||ex.sets||3;
+        const target=isBW?`BW × ${r}${isSec?' sec':''} × ${s}sets`:`${w}lbs × ${r} × ${s}sets`;
+        const ei=eid.replace(/'/g,"\\'");
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+          <div style="min-width:0;flex:1;"><div style="font-size:13px;">${esc(ex.name)}</div><div style="font-size:10px;color:var(--text-faint);">${target}</div></div>
+          <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+            <button onclick="fitRemoveExFromDate('${ds}','${gi}','${ei}')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:#c0392b;">✕</button>
+            <button onclick="fitReplaceExOnDate('${ds}','${gi}','${ei}')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--accent);">⇄</button>
+          </div>
+        </div>`;
+      }).join('');
+      exRows+=`<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;margin-bottom:2px;">
+          <span style="font-size:11px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.06em;">🏋️ ${esc(gLabel)}</span>
+          <button onclick="fitRemoveLiftingSessionFromDate('${ds}','${gi}')" style="font-size:10px;color:#c0392b;border:1px solid rgba(192,57,43,.4);border-radius:6px;padding:2px 7px;background:none;cursor:pointer;">Remove</button>
         </div>
+        ${eRows||'<div style="font-size:12px;color:var(--text-faint);padding:4px 0;">No exercises.</div>'}
       </div>`;
-    }).join('');
+    });
   }
 
   const optRows=opts.map((o,i)=>{
@@ -5116,7 +5202,7 @@ function fitEditScheduleDay(dateStr){
     </div>
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em;">Other options</div>
     ${optRows}`;
-  if(exEl)exEl.innerHTML=exRows||'<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No exercises scheduled</div>';
+  if(exEl)exEl.innerHTML=exRows||'<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No sessions scheduled yet — pick one above.</div>';
   openM('fit-edit-day-modal');
 }
 
@@ -5138,7 +5224,7 @@ function renderDayExercisesByDate(dateStr, exIds, groupId){
   }).join('');
 }
 
-function fitStartWorkoutFromSchedule(dateStr){
+function fitStartWorkoutFromSchedule(dateStr,specificGroupId){
   if(fitActiveSession&&!confirm('You have an active session. Discard it?'))return;
   if(fitSessionTimer)clearInterval(fitSessionTimer);
   const entries=(fitSchedule[dateStr]||[]).map(e=>{
@@ -5146,7 +5232,7 @@ function fitStartWorkoutFromSchedule(dateStr){
       return{...e,type:'lifting',groupId:e.groupId||e.id,exerciseIds:e.exerciseIds||[]};
     return e;
   });
-  const entry=entries.find(x=>x.type==='lifting');
+  const entry=specificGroupId?entries.find(x=>x.type==='lifting'&&x.groupId===specificGroupId):entries.find(x=>x.type==='lifting');
   if(!entry){alert('No lifting session scheduled for today.');return;}
   const g=fitGroups.find(x=>x.id===entry.groupId);
   const exIds=entry.exerciseIds||(g?.exerciseIds||[]);
@@ -6662,6 +6748,89 @@ function fitSavePastWorkout(){
 let fitCardioUnit='km';
 let fitCardioIntervals=[];
 
+// ─────────────────────── INTERACTIVE RUN VIEW ────────────────────────────────
+function fitStartRunView(planIdx){
+  const session=FIT_RUN_PLAN[Math.min(planIdx,FIT_RUN_PLAN.length-1)];
+  if(!session||!session.intervals.length)return;
+  _fitRunActive={planIdx,ivIdx:0,secsLeft:Math.round(session.intervals[0].dur*60),totalSecs:0,timer:null};
+  _fitRunRender();
+  const el=document.getElementById('fit-run-view');
+  if(el){el.style.display='flex';}
+  _fitRunActive.timer=setInterval(_fitRunTick,1000);
+}
+function _fitRunTick(){
+  if(!_fitRunActive)return;
+  _fitRunActive.secsLeft--;
+  _fitRunActive.totalSecs++;
+  const cd=document.getElementById('frv-countdown');
+  if(cd)cd.textContent=_fitFmtMSS(_fitRunActive.secsLeft);
+  const el=document.getElementById('frv-elapsed');
+  if(el)el.textContent=_fitFmtMSS(_fitRunActive.totalSecs);
+  if(_fitRunActive.secsLeft<=0)_fitRunNextInterval();
+}
+function _fitRunNextInterval(){
+  if(!_fitRunActive)return;
+  const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
+  _fitRunActive.ivIdx++;
+  if(_fitRunActive.ivIdx>=session.intervals.length){_fitRunFinish();return;}
+  _fitRunActive.secsLeft=Math.round(session.intervals[_fitRunActive.ivIdx].dur*60);
+  _fitRunRender();
+}
+function _fitRunSkip(){_fitRunNextInterval();}
+function _fitRunFinish(){
+  if(_fitRunActive&&_fitRunActive.timer)clearInterval(_fitRunActive.timer);
+  _fitRunActive=null;
+  const el=document.getElementById('fit-run-view');if(el)el.style.display='none';
+  fitOpenCardioModal();
+}
+function _fitFmtMSS(secs){
+  if(secs<0)secs=0;
+  const m=Math.floor(secs/60);const s=secs%60;
+  return m+':'+(s<10?'0':'')+s;
+}
+function _fitRunRender(){
+  if(!_fitRunActive)return;
+  const session=FIT_RUN_PLAN[_fitRunActive.planIdx];
+  const iv=session.intervals[_fitRunActive.ivIdx];
+  const isRun=iv.t==='run';
+  const color=isRun?'#c0392b':'#219150';
+  const lbl=document.getElementById('frv-session-label');
+  if(lbl)lbl.textContent=`Session ${session.s} of ${FIT_RUN_PLAN.length} · Week ${session.w}`;
+  const nm=document.getElementById('frv-session-name');
+  if(nm)nm.textContent=session.wLabel;
+  const typ=document.getElementById('frv-interval-type');
+  if(typ){typ.textContent=(iv.lbl||(isRun?'Run':'Walk')).toUpperCase();typ.style.color=color;}
+  const cd=document.getElementById('frv-countdown');
+  if(cd){cd.textContent=_fitFmtMSS(_fitRunActive.secsLeft);cd.style.color=color;}
+  const spd=document.getElementById('frv-speed');
+  if(spd)spd.textContent=`${iv.pace} km/h`;
+  const nextIv=session.intervals[_fitRunActive.ivIdx+1];
+  const nw=document.getElementById('frv-next-wrap');
+  if(nw){
+    if(nextIv){
+      const ni=nextIv.t==='run';
+      nw.innerHTML=`<span style="font-size:11px;color:var(--text-faint);">Up next — </span><span style="color:${ni?'#c0392b':'#219150'};font-weight:600;">${(nextIv.lbl||(ni?'Run':'Walk'))}</span><span style="color:var(--text-muted);"> · ${_fitFmtMSS(Math.round(nextIv.dur*60))} @ ${nextIv.pace} km/h</span>`;
+    } else {
+      nw.innerHTML=`<span style="font-size:12px;color:#219150;font-weight:600;">🏁 Last interval</span>`;
+    }
+  }
+  const el=document.getElementById('frv-intervals');
+  if(el){
+    el.innerHTML=session.intervals.map((intv,i)=>{
+      const isCur=i===_fitRunActive.ivIdx;const isDone=i<_fitRunActive.ivIdx;
+      const ir=intv.t==='run';const c=ir?'#c0392b':'#219150';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;margin-bottom:2px;background:${isCur?`rgba(${ir?'192,57,43':'39,174,96'},.08)`:'transparent'};opacity:${isDone?'.4':'1'};">
+        <span style="font-size:10px;font-weight:700;color:${c};min-width:34px;">${ir?'RUN':'WALK'}</span>
+        <span style="font-size:12px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(intv.lbl||'')}</span>
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${_fitFmtMSS(Math.round(intv.dur*60))} @ ${intv.pace}</span>
+        ${isCur?`<span style="font-size:9px;background:${c};color:#fff;padding:1px 5px;border-radius:6px;white-space:nowrap;">NOW</span>`:(isDone?'<span style="color:var(--text-faint);">✓</span>':'')}
+      </div>`;
+    }).join('');
+    const rows=el.querySelectorAll('div');
+    if(rows[_fitRunActive.ivIdx])rows[_fitRunActive.ivIdx].scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+}
+
 function fitOpenCardioModal(dateStr){
   const d=dateStr||(()=>{const n=new Date();n.setDate(n.getDate());return n.toISOString().slice(0,10);})();
   document.getElementById('fit-cardio-date').value=d;
@@ -6814,7 +6983,7 @@ function fitRunAdvance(){
 }
 function fitRunRepeat(){showToast('Repeating current session — just log it again.');}
 function fitOpenCardioModalFromPlan(){
-  fitOpenCardioModal();
+  fitStartRunView(Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1));
   const s=FIT_RUN_PLAN[Math.min(fitRunSessionIdx,FIT_RUN_PLAN.length-1)];
   if(!s)return;
   setTimeout(()=>{
