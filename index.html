@@ -41,10 +41,15 @@
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async onload="window._gisReady=true;if(window._gisEmail)window._initDriveClient(window._gisEmail)"></script>
+<script>
+// Admin account + "view as user" flag (set before anything loads so no local data is touched)
+window._ADMIN_EMAIL='akjhav@gmail.com';
+window._viewAs=new URLSearchParams(location.search).get('viewAs')||null;
+</script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import{getFirestore,doc,setDoc,getDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import{getFirestore,doc,setDoc,getDoc,onSnapshot,collection,collectionGroup,getDocs}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FB={apiKey:"AIzaSyBr783V-tHnZ0WXrSI5PZlzuVSmOYy-xko",authDomain:"task-list-9ae78.firebaseapp.com",projectId:"task-list-9ae78",storageBucket:"task-list-9ae78.firebasestorage.app",messagingSenderId:"366375229247",appId:"1:366375229247:web:3ef7dee63e4c3feaa8a58a"};
 const app=initializeApp(FB);
@@ -57,6 +62,7 @@ window._fbReady=false;
 window._lastSaveAttemptMs=0;
 window._fbSave=function(data,onDone,onError){
   if(!uid)return;
+  if(window._viewAs)return; // admin view-as mode is read-only: never write
   clearTimeout(saveTimer);
   window._lastSaveAttemptMs=Date.now();
   saveTimer=setTimeout(async()=>{
@@ -75,14 +81,64 @@ window._fbSignOut=async function(){
   await signOut(auth);
 };
 
+// ── ADMIN: list every user and their summary ──
+window._adminListUsers=async function(){
+  const profiles={};
+  try{(await getDocs(collection(db,'users'))).forEach(s=>{profiles[s.id]=s.data();});}catch(e){console.warn('Profile list failed',e);}
+  const out={};
+  let dataErr=null;
+  try{
+    (await getDocs(collectionGroup(db,'data'))).forEach(s=>{
+      if(s.id!=='main'||!s.ref.parent.parent)return;
+      const id=s.ref.parent.parent.id;const d=s.data()||{};
+      const tasks=Array.isArray(d.tasks)?d.tasks:[];
+      const sessions=Array.isArray(d.fitSessions)?d.fitSessions:[];
+      out[id]={uid:id,openTasks:tasks.filter(t=>!t.done).length,doneTasks:tasks.filter(t=>t.done).length+(Array.isArray(d.archive)?d.archive.length:0),workouts:sessions.length};
+    });
+  }catch(e){dataErr=e;console.warn('Data list failed',e);}
+  Object.keys(profiles).forEach(id=>{if(!out[id])out[id]={uid:id,openTasks:0,doneTasks:0,workouts:0,noData:true};});
+  const list=Object.values(out).map(u=>({...u,...(profiles[u.uid]||{})}));
+  list.sort((a,b)=>(b.lastSeen||'').localeCompare(a.lastSeen||''));
+  if(!list.length&&dataErr)throw dataErr;
+  return list;
+};
+window._adminViewAs=function(id){location.href=location.pathname+'?viewAs='+encodeURIComponent(id);};
+window._adminExitView=function(){location.href=location.pathname;};
+
 onAuthStateChanged(auth,async user=>{
   if(user){
     uid=user.uid;
+    const isAdmin=!!user.email&&user.email.toLowerCase()===window._ADMIN_EMAIL&&user.emailVerified;
+    // Only the admin may use view-as mode; anyone else gets bounced to their own data
+    if(window._viewAs&&!isAdmin){location.replace(location.pathname);return;}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app-shell').style.display='block';
     // Show user info
     document.getElementById('user-avatar').textContent=user.displayName?user.displayName[0].toUpperCase():'?';
     document.getElementById('user-name').textContent=user.displayName||user.email;
+    if(isAdmin){const ab=document.getElementById('admin-btn');if(ab)ab.style.display='inline';}
+    if(window._viewAs){
+      // ── VIEW-AS MODE (admin, read-only) ──
+      const target=window._viewAs;
+      const banner=document.getElementById('viewas-banner');
+      let label='another user';
+      try{const p=await getDoc(doc(db,'users',target));if(p.exists()){const pd=p.data();label=pd.name||pd.email||label;}}catch(e){}
+      document.getElementById('viewas-name').textContent=label;
+      banner.style.display='flex';document.body.classList.add('viewas');
+      document.title='Viewing '+label+' · My Tasks';
+      if(unsub)unsub();
+      unsub=onSnapshot(doc(db,'users',target,'data','main'),snap=>{
+        window._fbReady=true;
+        if(snap.exists())window._hydrateFromFirebase(snap.data());
+        else showToast('This user has no saved data yet');
+      },err=>{
+        console.error('View-as read failed',err);
+        showToast('⚠️ Can\'t read this user\'s data — check the Firestore rules');
+      });
+      return;
+    }
+    // Record name/email/last-seen so the admin's user list can show who's who
+    setDoc(doc(db,'users',uid),{email:user.email||'',name:user.displayName||'',lastSeen:new Date().toISOString()},{merge:true}).catch(e=>console.warn('Profile save failed',e));
     // Kick off Drive backup auth (GIS may not be loaded yet — _initDriveClient handles that)
     if(window._initDriveClient)window._initDriveClient(user.email);else window._gisEmail=user.email;
     // Subscribe to real-time updates
@@ -562,6 +618,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .hist-event{font-size:11px;color:var(--text-faint);}
 /* SEARCH HIGHLIGHT */
 .search-hl{background:#FEF08A;border-radius:2px;color:#1C1A17;}
+/* ADMIN / VIEW-AS */
+.viewas-banner{display:none;position:sticky;top:0;z-index:150;background:#B05A00;color:#fff;padding:8px 1rem;align-items:center;justify-content:center;gap:10px;font-size:13px;flex-wrap:wrap;text-align:center;}
+.viewas-banner b{font-weight:600;}
+.viewas-banner button{background:#fff;color:#B05A00;border:none;border-radius:6px;padding:4px 12px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+body.viewas .tb{top:36px;}
+.adm-list{display:flex;flex-direction:column;gap:6px;}
+.adm-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border-md);border-radius:var(--rs);cursor:pointer;background:var(--surface);transition:background .15s;}
+.adm-row:hover{background:var(--surface2);}
+.adm-av{width:30px;height:30px;border-radius:50%;background:var(--accent-light);color:var(--accent);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.adm-main{flex:1;min-width:0;}
+.adm-name{font-size:14px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm-sub{font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm-stats{font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap;line-height:1.5;}
+.adm-you{font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;}
+.adm-msg{font-size:13px;color:var(--text-muted);padding:1rem 0;line-height:1.6;}
 /* LOGIN SCREEN */
 #login-screen{position:fixed;inset:0;background:var(--accent);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;}
 .login-box{background:#fff;border-radius:20px;padding:2.5rem 2rem;max-width:340px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);}
@@ -825,6 +896,7 @@ details>summary::marker{display:none;}
       Continue with Google
     </button>
     <div class="login-note">Your data syncs automatically across all devices.<br>No password needed — just your Google account.</div>
+    <div class="login-note" style="margin-top:8px;">Note: the app's admin can view the data you enter.</div>
   </div>
 </div>
 
@@ -832,6 +904,18 @@ details>summary::marker{display:none;}
 <div id="app-shell">
 <canvas id="cc"></canvas>
 <div class="toast" id="toast"></div>
+<!-- ADMIN: VIEW-AS BANNER -->
+<div class="viewas-banner" id="viewas-banner">
+  <span>👁 Viewing <b id="viewas-name">another user</b>'s tracker · read-only</span>
+  <button onclick="window._adminExitView()">Exit</button>
+</div>
+<!-- ADMIN: USER LIST -->
+<div class="mo" id="admin-modal" onclick="if(event.target===this)closeM('admin-modal')">
+  <div class="modal">
+    <div class="mt">Users</div>
+    <div id="admin-list" class="adm-list"></div>
+  </div>
+</div>
 <!-- LEVEL UP OVERLAY -->
 <div class="lvlup-overlay" id="lvlup-overlay" onclick="closeLevelUp()">
   <div class="lvlup-box">
@@ -861,6 +945,7 @@ details>summary::marker{display:none;}
     <div class="user-nm" id="user-name">Signed in</div>
     <div class="sync-dot" id="sync-dot" title="Synced"></div>
     <button id="drive-auth-btn" class="signout-btn" onclick="window._authDriveManual()" title="Connect Google Drive backup" style="display:none;color:rgba(245,243,238,.75);">☁️ Drive</button>
+    <button id="admin-btn" class="signout-btn" onclick="openAdmin()" title="View other users' data" style="display:none;color:rgba(245,243,238,.85);">👥 Admin</button>
     <button class="signout-btn" onclick="location.reload()" title="Refresh app">↺</button>
     <button class="signout-btn" onclick="window._fbSignOut()">Sign out</button>
   </div>
@@ -3596,6 +3681,7 @@ async function toggleNotifications(){
 }
 let _lastNotifKey='';
 function checkDueNotifications(){
+  if(window._viewAs)return;
   if(!settings.notif||Notification.permission!=='granted')return;
   const overdue=tasks.filter(t=>!t.done&&t.due&&t.due<td());
   const dueToday=tasks.filter(t=>!t.done&&t.due===td());
@@ -3606,6 +3692,7 @@ function checkDueNotifications(){
   else if(dueToday.length){new Notification('Tasks due today',{body:`${dueToday.length} task${dueToday.length>1?'s':''} due today.`,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="28" font-size="28">📋</text></svg>'});}
 }
 function scheduleDigest(){
+  if(window._viewAs)return;
   if(!settings.digest||!settings.notif||Notification.permission!=='granted')return;
   const now=new Date();const next8am=new Date(now);
   next8am.setHours(8,0,0,0);if(next8am<=now)next8am.setDate(next8am.getDate()+1);
@@ -3614,6 +3701,7 @@ function scheduleDigest(){
   window._digestTimer=setTimeout(()=>{sendDigest();scheduleDigest();},msUntil);
 }
 function sendDigest(){
+  if(window._viewAs)return;
   if(!settings.digest||!settings.notif||Notification.permission!=='granted')return;
   const overdue=tasks.filter(t=>!t.done&&t.due&&t.due<td()).length;
   const dueToday=tasks.filter(t=>!t.done&&t.due===td()).length;
@@ -8198,6 +8286,7 @@ const _DRIVE_CLIENT_ID='366375229247-ge4ujuvicsfhtl6p55bmrk7qoeds03c1.apps.googl
 let _driveTokenClient=null,_driveToken=null,_driveTokenExpiry=0;
 
 window._initDriveClient=function(email){
+  if(window._viewAs)return;
   if(!window.google?.accounts?.oauth2){window._gisEmail=email;return;}
   _driveTokenClient=google.accounts.oauth2.initTokenClient({
     client_id:_DRIVE_CLIENT_ID,
@@ -8237,6 +8326,7 @@ async function _driveFindFile(folderId,name){
   return(await r.json()).files?.[0]?.id||null;
 }
 async function _driveAutoBackup(){
+  if(window._viewAs)return;
   if(!_driveToken||Date.now()>_driveTokenExpiry)return;
   const today=new Date().toISOString().slice(0,10);
   if(localStorage.getItem('_driveBackupDate')===today)return;
@@ -8260,6 +8350,7 @@ async function _driveAutoBackup(){
 // ────────────────────────────────────────────────────────────────────────────
 
 function save(){
+  if(window._viewAs){if(!window._viewAsWarned){window._viewAsWarned=true;showToast('👁 View-only — changes aren\'t saved');}return;}
   const state=getState();
   const sizeKB=Math.round(JSON.stringify(state).length/1024);
   try{localStorage.setItem('mytasks_v7_cache',JSON.stringify(state));}catch(e){}
@@ -8275,6 +8366,7 @@ function save(){
 }
 
 function load(){
+  if(window._viewAs)return; // view-as mode: start blank, never read own cache
   try{
     const r=localStorage.getItem('mytasks_v7_cache');
     if(r){const d=JSON.parse(r);applyData(d);}
@@ -8395,11 +8487,35 @@ function applyData(d){
   }
 }
 
+
+// ── ADMIN: user list modal ──
+async function openAdmin(){
+  const el=document.getElementById('admin-list');
+  el.innerHTML='<div class="adm-msg">Loading users…</div>';
+  openM('admin-modal');
+  try{
+    const users=await window._adminListUsers();
+    if(!users.length){el.innerHTML='<div class="adm-msg">No users found yet.</div>';return;}
+    el.innerHTML=users.map(u=>{
+      const nm=u.name||u.email||('User '+u.uid.slice(0,6));
+      const seen=u.lastSeen?new Date(u.lastSeen).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'before admin view was added';
+      const isMe=u.email&&u.email.toLowerCase()===window._ADMIN_EMAIL;
+      return `<div class="adm-row" onclick="window._adminViewAs('${u.uid}')">
+        <div class="adm-av">${esc(nm[0].toUpperCase())}</div>
+        <div class="adm-main"><div class="adm-name">${esc(nm)}${isMe?'<span class="adm-you">you</span>':''}</div>
+        <div class="adm-sub">${u.email&&u.name?esc(u.email)+' · ':''}Last opened: ${esc(seen)}</div></div>
+        <div class="adm-stats">${u.noData?'No data yet':`${u.openTasks} open · ${u.doneTasks} done<br>${u.workouts} workout${u.workouts===1?'':'s'}`}</div>
+      </div>`;}).join('');
+  }catch(e){
+    console.error(e);
+    el.innerHTML=`<div class="adm-msg">Couldn't load users: ${esc(e.code||e.message||String(e))}.<br>Make sure the new Firestore rules are published.</div>`;
+  }
+}
 // Called by Firebase module when data loads from Firestore
 window._hydrateFromFirebase=function(d){
   applyData(d);
-  // Cache locally
-  try{localStorage.setItem('mytasks_v7_cache',JSON.stringify(d));}catch(e){}
+  // Cache locally (never in view-as mode — it would overwrite the admin's own cache)
+  if(!window._viewAs){try{localStorage.setItem('mytasks_v7_cache',JSON.stringify(d));}catch(e){}}
   applySettings();
   if(curV==='tasks')render();
   else if(curV==='today')rToday();
